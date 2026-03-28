@@ -6,6 +6,7 @@
   <title>RepairIQ — Know What You Should Pay</title>
   <meta name="description" content="Car repair cost calculator with right-to-repair state data." />
   <meta name="theme-color" content="#f59e0b" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://overpass-api.de; font-src 'self'; frame-src 'none'; base-uri 'self'; form-action 'self';" />
   <link rel="manifest" href="./manifest.json" />
   <link rel="apple-touch-icon" href="./icons/icon-192.png" />
   <style>
@@ -376,6 +377,40 @@
     </div>
   </div>
 
+  <!-- Find Mechanic tab -->
+  <div class="tab-panel" id="tab-mechanic">
+    <div class="inner">
+      <p class="section-label">Find a Mechanic</p>
+      <h2 style="font-size:1.2rem;font-weight:800;margin-bottom:0.6rem;">Shops Near You</h2>
+      <p style="font-size:0.85rem;color:var(--muted);margin-bottom:1.4rem;max-width:560px;line-height:1.55;">
+        Finds independent and dealer auto repair shops using OpenStreetMap data — no account needed.
+      </p>
+
+      <div class="mech-top">
+        <div class="mech-controls">
+          <button class="btn-locate" id="mechLocateBtn">
+            📍 Use My Location
+          </button>
+          <select class="radius-sel" id="mechRadius">
+            <option value="3000">3 km</option>
+            <option value="5000" selected>5 km</option>
+            <option value="10000">10 km</option>
+            <option value="20000">20 km</option>
+          </select>
+          <select class="shop-type-sel" id="mechType">
+            <option value="all">All Shops</option>
+            <option value="car_repair">Auto Repair</option>
+            <option value="car_parts">Parts Store</option>
+            <option value="tyres">Tyre Shop</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="mech-status" id="mechStatus">Enable location to find nearby shops.</div>
+      <div class="mech-grid" id="mechGrid"></div>
+    </div>
+  </div>
+
   <!-- R2R tab -->
   <div class="tab-panel" id="tab-r2r">
     <div class="inner">
@@ -597,9 +632,9 @@
       list.innerHTML = saved.map((e, i) => `
         <div class="saved-card">
           <button class="del-saved" data-idx="${i}" title="Delete">✕</button>
-          <h4>${e.repair}${e.make ? ' — ' + e.make + (e.model ? ' ' + e.model : '') : ''}</h4>
-          <p>Dealer: ${e.dealer} &nbsp;·&nbsp; Indie: ${e.indie} &nbsp;·&nbsp; DIY: ${e.diy}</p>
-          <p style="margin-top:0.3rem;">${e.year || ''} &nbsp;·&nbsp; Saved ${e.saved}</p>
+          <h4>${esc(e.repair)}${e.make ? ' — ' + esc(e.make) + (e.model ? ' ' + esc(e.model) : '') : ''}</h4>
+          <p>Dealer: ${esc(e.dealer)} &nbsp;·&nbsp; Indie: ${esc(e.indie)} &nbsp;·&nbsp; DIY: ${esc(e.diy)}</p>
+          <p style="margin-top:0.3rem;">${esc(e.year || '')} &nbsp;·&nbsp; Saved ${esc(e.saved)}</p>
         </div>
       `).join('');
     }
@@ -611,6 +646,132 @@
       saved.splice(parseInt(btn.dataset.idx), 1);
       localStorage.setItem('repairiq_saved', JSON.stringify(saved));
       renderSaved();
+    });
+
+    // ── Mechanic finder ──
+    // #ASSUMPTION: Overpass API is available and returns OSM amenity nodes
+    const OVERPASS = 'https://overpass-api.de/api/interpreter';
+    function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+    let mechAbort = null;
+
+    function haversineKm(lat1, lon1, lat2, lon2) {
+      const R = 6371, dLat = (lat2-lat1)*Math.PI/180, dLon = (lon2-lon1)*Math.PI/180;
+      const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
+      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    }
+
+    function shopTypeLabel(tags) {
+      if (tags.shop === 'tyres') return 'Tyre Shop';
+      if (tags.shop === 'car_parts') return 'Parts Store';
+      if (tags.amenity === 'car_wash') return 'Car Wash';
+      return 'Auto Repair';
+    }
+
+    async function findMechanics(lat, lon, radius, typeFilter) {
+      // #ASSUMPTION: Overpass QL nwr covers nodes/ways/relations for shop and amenity
+      const filters = typeFilter === 'all'
+        ? `["shop"~"car_repair|tyres|car_parts"]["name"]`
+        : `["shop"="${typeFilter}"]["name"]`;
+      const query = `[out:json][timeout:20];nwr${filters}(around:${radius},${lat},${lon});out center 40;`;
+      if (mechAbort) mechAbort.abort();
+      mechAbort = new AbortController();
+      const resp = await fetch(OVERPASS, {
+        method: 'POST',
+        signal: mechAbort.signal,
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'data=' + encodeURIComponent(query)
+      });
+      if (!resp.ok) throw new Error('Overpass request failed');
+      const data = await resp.json();
+      return (data.elements || []).map(el => {
+        const elLat = el.lat ?? el.center?.lat;
+        const elLon = el.lon ?? el.center?.lon;
+        const dist = (elLat && elLon) ? haversineKm(lat, lon, elLat, elLon) : null;
+        return { ...el.tags, _lat: elLat, _lon: elLon, _dist: dist };
+      }).sort((a, b) => (a._dist ?? 99) - (b._dist ?? 99));
+    }
+
+    function renderMechCards(shops, userLat, userLon) {
+      const grid = document.getElementById('mechGrid');
+      if (!shops.length) {
+        grid.innerHTML = '<p class="mech-empty">No shops found in this area. Try a larger radius.</p>';
+        return;
+      }
+      grid.innerHTML = shops.map(s => {
+        const dist = s._dist != null ? (s._dist < 1 ? (s._dist*1000).toFixed(0)+'m' : s._dist.toFixed(1)+'km') : '';
+        const addr = [s['addr:housenumber'], s['addr:street'], s['addr:city']].filter(Boolean).join(' ');
+        const phone = s.phone || s['contact:phone'] || '';
+        // validate coords before building URL — prevents open redirect from malicious OSM data
+        const validCoords = s._lat && s._lon && !isNaN(s._lat) && !isNaN(s._lon) && s._lat >= -90 && s._lat <= 90 && s._lon >= -180 && s._lon <= 180;
+        const mapsUrl = validCoords
+          ? `https://maps.google.com/?q=${encodeURIComponent(s._lat)},${encodeURIComponent(s._lon)}`
+          : `https://maps.google.com/?q=${encodeURIComponent(s.name||'auto repair')}`;
+        // phone must start with + or digits only — prevents tel: injection
+        const safePhone = /^[+\d\s\-().]+$/.test(phone) ? phone : '';
+        return `
+        <div class="mech-card">
+          <div class="mech-name">${esc(s.name || 'Auto Repair Shop')}</div>
+          <div class="mech-meta">
+            <span class="mech-type-badge">${esc(shopTypeLabel(s))}</span>
+            ${dist ? `<span class="mech-dist">${esc(dist)} away</span>` : ''}
+          </div>
+          ${s.opening_hours ? `<div class="mech-hours">🕐 ${esc(s.opening_hours)}</div>` : ''}
+          ${addr ? `<div class="mech-addr">📍 ${esc(addr)}</div>` : ''}
+          ${safePhone ? `<div class="mech-phone">📞 ${esc(safePhone)}</div>` : ''}
+          <div class="mech-actions">
+            <a href="${esc(mapsUrl)}" class="btn-dir" target="_blank" rel="noopener">Directions</a>
+            ${safePhone ? `<a href="tel:${esc(safePhone)}" class="btn-call">Call</a>` : ''}
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    document.getElementById('mechLocateBtn').addEventListener('click', async () => {
+      const btn = document.getElementById('mechLocateBtn');
+      const status = document.getElementById('mechStatus');
+      const radius = parseInt(document.getElementById('mechRadius').value, 10);
+      const typeFilter = document.getElementById('mechType').value;
+      btn.disabled = true;
+      status.className = 'mech-status loading';
+      status.innerHTML = '<span class="spinner"></span>Getting location…';
+      document.getElementById('mechGrid').innerHTML = '';
+
+      try {
+        let lat, lon;
+        // #ASSUMPTION: Capacitor Geolocation available when running native
+        if (window.Capacitor?.Plugins?.Geolocation) {
+          const pos = await window.Capacitor.Plugins.Geolocation.getCurrentPosition({ enableHighAccuracy: true });
+          lat = pos.coords.latitude; lon = pos.coords.longitude;
+        } else {
+          const pos = await new Promise((res, rej) =>
+            navigator.geolocation.getCurrentPosition(res, rej, { enableHighAccuracy: true, timeout: 10000 })
+          );
+          lat = pos.coords.latitude; lon = pos.coords.longitude;
+        }
+
+        status.innerHTML = '<span class="spinner"></span>Searching Overpass API…';
+        const shops = await findMechanics(lat, lon, radius, typeFilter);
+        status.className = 'mech-status';
+        status.textContent = shops.length
+          ? `Found ${shops.length} shop${shops.length !== 1 ? 's' : ''} within ${radius/1000}km.`
+          : 'No shops found. Try expanding the radius.';
+        renderMechCards(shops, lat, lon);
+      } catch (err) {
+        status.className = 'mech-status error';
+        status.textContent = err.code === 1
+          ? 'Location permission denied. Enable it in settings and try again.'
+          : `Error: ${err.message || 'Could not retrieve location'}`;
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    // Re-search when radius/type changes if location was already fetched
+    ['mechRadius', 'mechType'].forEach(id => {
+      document.getElementById(id).addEventListener('change', () => {
+        const btn = document.getElementById('mechLocateBtn');
+        if (!btn.disabled) btn.click();
+      });
     });
 
     // ── Tabs ──
