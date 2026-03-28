@@ -12,7 +12,8 @@
   "dependencies": {
     "@capacitor/android": "^8.1.0",
     "@capacitor/cli": "^8.1.0",
-    "@capacitor/core": "^8.1.0"
+    "@capacitor/core": "^8.1.0",
+    "@capacitor/geolocation": "^8.0.1"
   },
   "overrides": {
     "minimatch": ">=10.2.3",

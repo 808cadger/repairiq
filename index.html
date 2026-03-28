@@ -190,6 +190,88 @@
     .del-saved:hover { color: var(--red); }
     .empty-msg { font-size: 0.85rem; color: var(--muted); padding: 1.5rem 0; }
 
+    /* ── Mechanic finder ── */
+    .mech-top {
+      display: flex; align-items: flex-start; justify-content: space-between;
+      flex-wrap: wrap; gap: 1rem; margin-bottom: 1.4rem;
+    }
+    .mech-controls { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
+    .btn-locate {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      padding: 0.72rem 1.3rem; border-radius: 999px;
+      background: linear-gradient(135deg, var(--accent), #d97706);
+      color: #000; font-size: 0.9rem; font-weight: 800; border: none; cursor: pointer;
+      box-shadow: 0 3px 14px rgba(245,158,11,0.35);
+      transition: opacity 0.15s, transform 0.15s cubic-bezier(0.4,0,0.2,1);
+    }
+    .btn-locate:hover  { opacity: 0.88; transform: translateY(-1px); }
+    .btn-locate:disabled { opacity: 0.48; cursor: not-allowed; transform: none; }
+    .radius-sel {
+      padding: 0.45rem 0.8rem; border-radius: 8px;
+      background: var(--surface2); border: 1px solid var(--border);
+      color: var(--text); font-size: 0.82rem; outline: none; cursor: pointer;
+    }
+    .shop-type-sel {
+      padding: 0.45rem 0.8rem; border-radius: 8px;
+      background: var(--surface2); border: 1px solid var(--border);
+      color: var(--text); font-size: 0.82rem; outline: none; cursor: pointer;
+    }
+    .mech-status {
+      font-size: 0.82rem; min-height: 1.2rem; margin-bottom: 1rem;
+      color: var(--muted);
+    }
+    .mech-status.loading { color: var(--accent); }
+    .mech-status.error   { color: var(--red); }
+    .mech-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 1rem;
+    }
+    .mech-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 1.1rem 1.2rem;
+      position: relative; overflow: hidden;
+      transition: border-color 0.18s cubic-bezier(0.4,0,0.2,1), transform 0.18s;
+    }
+    .mech-card::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+      background: linear-gradient(90deg, var(--accent), var(--blue));
+      opacity: 0; transition: opacity 0.18s;
+    }
+    .mech-card:hover { border-color: rgba(245,158,11,0.4); transform: translateY(-2px); }
+    .mech-card:hover::before { opacity: 1; }
+    .mech-name { font-weight: 800; font-size: 0.97rem; margin-bottom: 0.3rem; }
+    .mech-meta { display: flex; gap: 0.45rem; flex-wrap: wrap; align-items: center; margin-bottom: 0.55rem; }
+    .mech-type-badge {
+      font-size: 0.68rem; font-weight: 700; padding: 0.15rem 0.5rem;
+      border-radius: 999px; background: rgba(245,158,11,0.12);
+      border: 1px solid rgba(245,158,11,0.3); color: var(--accent);
+      text-transform: capitalize;
+    }
+    .mech-dist { font-size: 0.72rem; color: var(--muted); }
+    .mech-hours {
+      font-size: 0.78rem; color: var(--green); margin-bottom: 0.4rem;
+    }
+    .mech-addr { font-size: 0.8rem; color: var(--muted); margin-bottom: 0.3rem; line-height: 1.4; }
+    .mech-phone { font-size: 0.8rem; color: var(--muted); margin-bottom: 0.8rem; }
+    .mech-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+    .btn-dir, .btn-call {
+      display: inline-flex; align-items: center; gap: 0.35rem;
+      padding: 0.38rem 0.85rem; border-radius: 7px; font-size: 0.78rem; font-weight: 700;
+      text-decoration: none; border: 1px solid; cursor: pointer; transition: background 0.15s;
+    }
+    .btn-dir  { border-color: var(--accent); color: var(--accent); background: transparent; }
+    .btn-dir:hover  { background: rgba(245,158,11,0.1); text-decoration: none; }
+    .btn-call { border-color: var(--blue); color: var(--blue); background: transparent; }
+    .btn-call:hover { background: rgba(59,130,246,0.1); text-decoration: none; }
+    .mech-empty { font-size: 0.85rem; color: var(--muted); padding: 1.5rem 0; text-align: center; }
+    .spinner {
+      display: inline-block; width: 13px; height: 13px;
+      border: 2px solid rgba(245,158,11,0.3); border-top-color: var(--accent);
+      border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 0.3rem;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
     footer {
       text-align: center; padding: 1.5rem;
       border-top: 1px solid var(--border);
@@ -206,6 +288,7 @@
 
   <div class="tabs">
     <button class="tab-btn active" data-tab="calc">Calculator</button>
+    <button class="tab-btn" data-tab="mechanic">Find Mechanic</button>
     <button class="tab-btn" data-tab="r2r">Right to Repair</button>
     <button class="tab-btn" data-tab="saved">Saved</button>
   </div>
@@ -335,6 +418,10 @@
       <div id="savedList"></div>
     </div>
   </div>
+
+  <div id="sw-avatar" data-context="RepairIQ — car repair cost calculator with right-to-repair state data, mechanic finder, and DIY vs dealer estimates"></div>
+  <script src="./api-client.js"></script>
+  <script src="./avatar-widget.js"></script>
 
   <footer>
     RepairIQ — Know your rights, know your costs. Pearl City, HI 🌺 &nbsp;·&nbsp;
