@@ -1,0 +1,6 @@
+{
+  "appId": "com.cadger808.repairiq",
+  "appName": "RepairIQ",
+  "webDir": "www",
+  "bundledWebRuntime": false
+}
