@@ -1,0 +1,15 @@
+{
+  "name": "RepairIQ",
+  "short_name": "RepairIQ",
+  "description": "Car repair cost calculator with right-to-repair data",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0b0d14",
+  "theme_color": "#f59e0b",
+  "icons": [
+    {"src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png"},
+    {"src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png"}
+  ]
+}

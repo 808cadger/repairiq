@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RepairIQ — Know What You Should Pay</title>
+  <meta name="description" content="Car repair cost calculator with right-to-repair state data." />
+  <meta name="theme-color" content="#f59e0b" />
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="apple-touch-icon" href="./icons/icon-192.png" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0b0d14;
+      --surface: #131825;
+      --surface2: #1b2336;
+      --border: #1e2d4a;
+      --accent: #f59e0b;
+      --blue: #3b82f6;
+      --green: #22c55e;
+      --red: #ef4444;
+      --orange: #fb923c;
+      --text: #e2e8f0;
+      --muted: #8892a4;
+      --radius: 10px;
+    }
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, sans-serif;
+      line-height: 1.55;
+      min-height: 100vh;
+    }
+
+    header {
+      padding: 1.4rem 1.8rem 1rem;
+      border-bottom: 1px solid var(--border);
+      background: rgba(11,13,20,0.92);
+      backdrop-filter: blur(10px);
+      position: sticky; top: 0; z-index: 50;
+    }
+    .logo { font-size: 1.5rem; font-weight: 800; }
+    .logo span { color: var(--accent); }
+    .tagline { font-size: 0.82rem; color: var(--muted); margin-top: 0.15rem; }
+
+    /* ── Tabs ── */
+    .tabs {
+      display: flex; gap: 0; border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+    .tab-btn {
+      flex: 1; padding: 0.9rem 0.5rem; border: none;
+      background: transparent; color: var(--muted);
+      font-size: 0.85rem; font-weight: 600; cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* ── Sections ── */
+    .section-label {
+      font-size: 0.72rem; font-weight: 700; letter-spacing: 0.14em;
+      text-transform: uppercase; color: var(--accent); margin-bottom: 0.5rem;
+    }
+    .inner { padding: 2rem 1.8rem; max-width: 760px; }
+
+    /* ── Form ── */
+    .form-grid {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 1rem; margin-bottom: 1.4rem;
+    }
+    @media (max-width: 560px) { .form-grid { grid-template-columns: 1fr; } }
+    .form-group label {
+      display: block; font-size: 0.78rem; font-weight: 700;
+      color: var(--muted); margin-bottom: 0.35rem; letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .form-select {
+      width: 100%; padding: 0.65rem 0.9rem;
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 8px; color: var(--text); font-size: 0.88rem;
+      outline: none; cursor: pointer;
+      transition: border-color 0.15s;
+      -webkit-appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238892a4' fill='none' stroke-width='1.5'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 0.9rem center;
+      padding-right: 2.2rem;
+    }
+    .form-select:focus { border-color: var(--accent); }
+    .btn-estimate {
+      width: 100%; padding: 0.9rem; border-radius: var(--radius);
+      background: linear-gradient(135deg, var(--accent), #d97706);
+      color: #000; font-size: 1rem; font-weight: 800;
+      border: none; cursor: pointer;
+      transition: opacity 0.15s, transform 0.15s cubic-bezier(0.4,0,0.2,1);
+      letter-spacing: 0.02em;
+    }
+    .btn-estimate:hover { opacity: 0.88; transform: translateY(-1px); }
+
+    /* ── Results ── */
+    #resultsPanel {
+      display: none; margin-top: 1.5rem;
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: var(--radius); overflow: hidden;
+    }
+    #resultsPanel.visible { display: block; }
+    .results-header {
+      padding: 1rem 1.4rem;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 0.6rem;
+    }
+    .results-header h3 { font-size: 1.1rem; font-weight: 800; }
+    .diff-badge {
+      font-size: 0.75rem; font-weight: 700; padding: 0.25rem 0.7rem;
+      border-radius: 999px; border: 1px solid;
+    }
+    .diff-easy    { background: rgba(34,197,94,0.12); border-color: rgba(34,197,94,0.3); color: var(--green); }
+    .diff-moderate { background: rgba(245,158,11,0.12); border-color: rgba(245,158,11,0.3); color: var(--accent); }
+    .diff-advanced { background: rgba(251,146,60,0.12); border-color: rgba(251,146,60,0.3); color: var(--orange); }
+    .diff-professional { background: rgba(239,68,68,0.12); border-color: rgba(239,68,68,0.3); color: var(--red); }
+    .results-body { padding: 1.2rem 1.4rem; }
+    .cost-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: 0.8rem; margin-bottom: 1.2rem;
+    }
+    @media (max-width: 480px) { .cost-grid { grid-template-columns: 1fr 1fr; } }
+    .cost-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 8px; padding: 0.9rem; text-align: center;
+    }
+    .cost-label { font-size: 0.7rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.4rem; }
+    .cost-value { font-size: 1.1rem; font-weight: 800; color: var(--text); }
+    .cost-value.green { color: var(--green); }
+    .cost-value.amber { color: var(--accent); }
+    .cost-value.blue  { color: var(--blue); }
+    .labor-row {
+      display: flex; align-items: center; gap: 0.5rem;
+      font-size: 0.85rem; color: var(--muted); margin-bottom: 0.8rem;
+    }
+    .labor-row span { color: var(--text); font-weight: 700; }
+    .r2r-badge {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      padding: 0.35rem 0.85rem; border-radius: 999px;
+      font-size: 0.78rem; font-weight: 700; border: 1px solid;
+      margin-bottom: 1rem;
+    }
+    .r2r-ok     { background: rgba(34,197,94,0.1);  border-color: rgba(34,197,94,0.3); color: var(--green); }
+    .r2r-check  { background: rgba(251,146,60,0.1); border-color: rgba(251,146,60,0.3); color: var(--orange); }
+    .btn-save-est {
+      padding: 0.55rem 1.2rem; border-radius: 8px;
+      background: transparent; border: 1px solid var(--accent);
+      color: var(--accent); font-size: 0.85rem; font-weight: 700;
+      cursor: pointer; transition: background 0.15s;
+    }
+    .btn-save-est:hover { background: rgba(245,158,11,0.1); }
+
+    /* ── R2R table ── */
+    .r2r-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; margin-top: 1rem; }
+    .r2r-table th {
+      text-align: left; padding: 0.6rem 0.8rem;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted);
+    }
+    .r2r-table td { padding: 0.6rem 0.8rem; border-bottom: 1px solid rgba(30,45,74,0.5); }
+    .status-badge {
+      font-size: 0.72rem; font-weight: 700; padding: 0.2rem 0.55rem;
+      border-radius: 999px; border: 1px solid;
+    }
+    .s-passed  { background: rgba(34,197,94,0.1); border-color: rgba(34,197,94,0.3); color: var(--green); }
+    .s-pending { background: rgba(245,158,11,0.1); border-color: rgba(245,158,11,0.3); color: var(--accent); }
+    .s-none    { background: rgba(239,68,68,0.08); border-color: rgba(239,68,68,0.25); color: var(--red); }
+
+    /* ── Saved estimates ── */
+    .saved-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 1rem 1.2rem;
+      margin-bottom: 0.8rem; position: relative;
+    }
+    .saved-card h4 { font-size: 0.95rem; font-weight: 700; margin-bottom: 0.3rem; }
+    .saved-card p { font-size: 0.82rem; color: var(--muted); }
+    .del-saved {
+      position: absolute; top: 0.7rem; right: 0.8rem;
+      background: none; border: none; color: var(--muted);
+      cursor: pointer; font-size: 1rem; transition: color 0.15s;
+    }
+    .del-saved:hover { color: var(--red); }
+    .empty-msg { font-size: 0.85rem; color: var(--muted); padding: 1.5rem 0; }
+
+    footer {
+      text-align: center; padding: 1.5rem;
+      border-top: 1px solid var(--border);
+      font-size: 0.82rem; color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="logo">🔧 <span>RepairIQ</span></div>
+    <div class="tagline">Know what you should pay before you walk in.</div>
+  </header>
+
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="calc">Calculator</button>
+    <button class="tab-btn" data-tab="r2r">Right to Repair</button>
+    <button class="tab-btn" data-tab="saved">Saved</button>
+  </div>
+
+  <!-- Calculator tab -->
+  <div class="tab-panel active" id="tab-calc">
+    <div class="inner">
+      <p class="section-label">Repair Cost Estimator</p>
+      <h2 style="font-size:1.2rem;font-weight:800;margin-bottom:1.2rem;">Get Your Estimate</h2>
+
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Make</label>
+          <select class="form-select" id="selMake">
+            <option value="">— Select Make —</option>
+            <option>Toyota</option><option>Honda</option><option>Ford</option>
+            <option>Chevrolet</option><option>BMW</option><option>Nissan</option>
+            <option>Subaru</option><option>Hyundai</option><option>Kia</option><option>Dodge</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Model</label>
+          <select class="form-select" id="selModel"><option value="">— Select Make First —</option></select>
+        </div>
+        <div class="form-group">
+          <label>Year</label>
+          <select class="form-select" id="selYear">
+            <option value="">— Year —</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Region</label>
+          <select class="form-select" id="selRegion">
+            <option value="">— Region —</option>
+            <option value="hi">Hawaii</option><option value="ca">California</option>
+            <option value="ny">New York</option><option value="tx">Texas</option>
+            <option value="fl">Florida</option><option value="mw">Midwest</option>
+            <option value="se">Southeast</option><option value="pnw">Pacific Northwest</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Repair Category</label>
+          <select class="form-select" id="selCategory">
+            <option value="">— Category —</option>
+            <option>Engine</option><option>Brakes</option><option>Transmission</option>
+            <option>Suspension</option><option>Electrical</option><option>AC/Heating</option>
+            <option>Exhaust</option><option>Tires</option><option>Oil/Fluids</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Specific Repair</label>
+          <select class="form-select" id="selRepair"><option value="">— Select Category First —</option></select>
+        </div>
+      </div>
+
+      <button class="btn-estimate" id="estimateBtn">Get Estimate →</button>
+
+      <div id="resultsPanel">
+        <div class="results-header">
+          <h3 id="resultTitle"></h3>
+          <span class="diff-badge" id="diffBadge"></span>
+        </div>
+        <div class="results-body">
+          <div class="cost-grid">
+            <div class="cost-card">
+              <div class="cost-label">Dealer</div>
+              <div class="cost-value amber" id="costDealer"></div>
+            </div>
+            <div class="cost-card">
+              <div class="cost-label">Indie Shop</div>
+              <div class="cost-value blue" id="costIndie"></div>
+            </div>
+            <div class="cost-card">
+              <div class="cost-label">DIY (Parts)</div>
+              <div class="cost-value green" id="costDIY"></div>
+            </div>
+          </div>
+          <div class="labor-row">⏱ Labor estimate: <span id="laborHours"></span> hours
+            &nbsp;·&nbsp; Region multiplier: <span id="regionMult"></span>
+          </div>
+          <div id="r2rBadge"></div>
+          <button class="btn-save-est" id="saveEstBtn">Save Estimate</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- R2R tab -->
+  <div class="tab-panel" id="tab-r2r">
+    <div class="inner">
+      <p class="section-label">Right to Repair</p>
+      <h2 style="font-size:1.2rem;font-weight:800;margin-bottom:0.75rem;">Know Your Rights</h2>
+      <p style="font-size:0.88rem;color:var(--muted);max-width:580px;line-height:1.6;margin-bottom:1.5rem;">
+        Right-to-repair laws require manufacturers to provide independent repair shops and consumers
+        with access to parts, tools, and diagnostic information. Without these laws, manufacturers
+        can restrict repairs to authorized dealers — inflating costs significantly.
+      </p>
+
+      <table class="r2r-table">
+        <thead>
+          <tr><th>State</th><th>Status</th><th>Notes</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Massachusetts</td><td><span class="status-badge s-passed">Passed</span></td><td>Auto data access law active since 2013/2021</td></tr>
+          <tr><td>New York</td><td><span class="status-badge s-passed">Passed</span></td><td>Digital Fair Repair Act signed 2022 (electronics)</td></tr>
+          <tr><td>Colorado</td><td><span class="status-badge s-pending">Pending</span></td><td>Legislation introduced; committee review</td></tr>
+          <tr><td>California</td><td><span class="status-badge s-pending">Pending</span></td><td>Multiple bills introduced; ongoing</td></tr>
+          <tr><td>Washington</td><td><span class="status-badge s-pending">Pending</span></td><td>SB 5190 in progress</td></tr>
+          <tr><td>Minnesota</td><td><span class="status-badge s-passed">Passed</span></td><td>Digital Fair Repair Act signed 2023</td></tr>
+          <tr><td>Texas</td><td><span class="status-badge s-none">No Law</span></td><td>No active legislation</td></tr>
+          <tr><td>Florida</td><td><span class="status-badge s-none">No Law</span></td><td>No active legislation</td></tr>
+          <tr><td>Hawaii</td><td><span class="status-badge s-pending">Pending</span></td><td>SB 2505 introduced</td></tr>
+        </tbody>
+      </table>
+
+      <p style="margin-top:1.2rem;font-size:0.78rem;color:var(--muted);">
+        <!-- TODO: link to ifixit.com/Right-to-Repair for current state tracker -->
+        Data current as of early 2026. Check iFixit or repair.org for real-time updates.
+      </p>
+    </div>
+  </div>
+
+  <!-- Saved tab -->
+  <div class="tab-panel" id="tab-saved">
+    <div class="inner">
+      <p class="section-label">Saved Estimates</p>
+      <div id="savedList"></div>
+    </div>
+  </div>
+
+  <footer>
+    RepairIQ — Know your rights, know your costs. Pearl City, HI 🌺 &nbsp;·&nbsp;
+    <a href="https://codeberg.org/cadger808/repairiq" target="_blank" rel="noopener" style="color:var(--accent);">Codeberg</a>
+  </footer>
+
+  <script>
+    // Aloha from Pearl City!
+
+    // ── Data ──
+    const models = {
+      Toyota: ['Camry','Corolla','RAV4','Tacoma'],
+      Honda:  ['Civic','Accord','CR-V','Pilot'],
+      Ford:   ['F-150','Mustang','Explorer','Escape'],
+      Chevrolet: ['Silverado','Malibu','Equinox','Tahoe'],
+      BMW:    ['3 Series','5 Series','X3','X5'],
+      Nissan: ['Altima','Rogue','Sentra','Frontier'],
+      Subaru: ['Outback','Forester','Impreza','Crosstrek'],
+      Hyundai:['Elantra','Tucson','Santa Fe','Sonata'],
+      Kia:    ['Sorento','Sportage','Forte','Telluride'],
+      Dodge:  ['Ram 1500','Charger','Challenger','Durango'],
+    };
+
+    // repairs[category][repair] = { dealer:[lo,hi], indie:[lo,hi], diy:[lo,hi]|null, labor:[lo,hi], diff }
+    const repairs = {
+      Engine: {
+        'Oil Change':     { dealer:[80,150],   indie:[40,80],   diy:[25,45],   labor:[0.3,0.7], diff:'easy' },
+        'Spark Plugs':    { dealer:[200,400],  indie:[100,200], diy:[30,80],   labor:[1,2],     diff:'moderate' },
+        'Timing Belt':    { dealer:[800,1200], indie:[500,900], diy:[120,200], labor:[4,6],     diff:'advanced' },
+        'Head Gasket':    { dealer:[1800,2800],indie:[1200,2000],diy:[400,600],labor:[8,12],    diff:'professional' },
+      },
+      Brakes: {
+        'Pad Replacement':  { dealer:[300,500], indie:[150,280], diy:[40,80],   labor:[1,1.5], diff:'moderate' },
+        'Rotor Replacement':{ dealer:[500,800], indie:[300,550], diy:[80,150],  labor:[1.5,2.5],diff:'moderate' },
+        'Caliper Replacement':{ dealer:[600,1000],indie:[350,650],diy:[100,200],labor:[2,3],   diff:'advanced' },
+      },
+      Transmission: {
+        'Fluid Change': { dealer:[200,350], indie:[100,180], diy:[30,60],  labor:[0.5,1],  diff:'easy' },
+        'Filter Change':{ dealer:[250,400], indie:[130,220], diy:[40,80],  labor:[1,1.5],  diff:'moderate' },
+        'Full Rebuild': { dealer:[3000,5000],indie:[2000,3500],diy:null,   labor:[15,25],  diff:'professional' },
+      },
+      Suspension: {
+        'Strut Replacement': { dealer:[800,1400], indie:[500,900], diy:[150,300], labor:[3,4.5], diff:'advanced' },
+        'Sway Bar Links':    { dealer:[200,400],  indie:[120,250], diy:[30,60],   labor:[0.7,1.3],diff:'moderate' },
+        'Control Arm':       { dealer:[500,900],  indie:[300,600], diy:[80,180],  labor:[2,3.5], diff:'advanced' },
+      },
+      Electrical: {
+        'Battery Replacement':{ dealer:[200,350], indie:[120,220], diy:[80,160], labor:[0.3,0.7], diff:'easy' },
+        'Alternator':         { dealer:[500,900], indie:[300,600], diy:[100,200],labor:[2,3],     diff:'moderate' },
+        'Starter Motor':      { dealer:[400,750], indie:[250,500], diy:[80,180], labor:[1.5,2.5], diff:'moderate' },
+      },
+      'AC/Heating': {
+        'Recharge (Freon)':  { dealer:[200,350], indie:[120,200], diy:[40,80],   labor:[0.5,1],  diff:'easy' },
+        'Compressor Replace':{ dealer:[800,1400],indie:[500,1000],diy:[150,300], labor:[3,5],    diff:'advanced' },
+        'Heater Core':       { dealer:[900,1500],indie:[600,1100],diy:null,      labor:[5,8],    diff:'professional' },
+      },
+      Exhaust: {
+        'Muffler Replace': { dealer:[300,550], indie:[180,350], diy:[60,120], labor:[1,2],   diff:'moderate' },
+        'Catalytic Converter':{ dealer:[900,2000],indie:[600,1400],diy:[200,600],labor:[2,4], diff:'advanced' },
+        'O2 Sensor':       { dealer:[250,450], indie:[150,300], diy:[30,70],  labor:[0.5,1.5],diff:'moderate' },
+      },
+      Tires: {
+        'Single Tire':   { dealer:[150,300],  indie:[100,220], diy:null,      labor:[0.3,0.5], diff:'easy' },
+        'Full Set (4)':  { dealer:[600,1200], indie:[400,900], diy:null,      labor:[1,1.5],   diff:'easy' },
+        'Alignment':     { dealer:[100,180],  indie:[70,130],  diy:null,      labor:[0.7,1.2], diff:'easy' },
+      },
+      'Oil/Fluids': {
+        'Oil Change':        { dealer:[80,150],  indie:[40,80],  diy:[25,45],  labor:[0.3,0.7], diff:'easy' },
+        'Coolant Flush':     { dealer:[150,250], indie:[90,160], diy:[25,50],  labor:[0.5,1],   diff:'easy' },
+        'Brake Fluid Flush': { dealer:[120,220], indie:[70,130], diy:[20,40],  labor:[0.5,1],   diff:'easy' },
+      },
+    };
+
+    // Region cost multipliers (additive %)
+    const regionMults = { hi:0.25, ca:0.20, ny:0.18, tx:-0.05, fl:0.02, mw:-0.10, se:-0.05, pnw:0.08 };
+    const regionLabels = { hi:'Hawaii +25%', ca:'California +20%', ny:'New York +18%', tx:'Texas -5%',
+                           fl:'Florida +2%', mw:'Midwest -10%', se:'Southeast -5%', pnw:'Pacific NW +8%' };
+
+    // R2R coverage: repairs that directly benefit from R2R data access
+    const r2rRepairs = ['Timing Belt','Head Gasket','Alternator','Starter Motor','Caliper Replacement',
+                        'Catalytic Converter','Heater Core','Full Rebuild'];
+
+    // ── Year selector ──
+    const yr = document.getElementById('selYear');
+    for (let y = 2024; y >= 2010; y--) {
+      const o = document.createElement('option'); o.value = y; o.textContent = y; yr.appendChild(o);
+    }
+
+    // ── Make → Model ──
+    document.getElementById('selMake').addEventListener('change', function() {
+      const sel = document.getElementById('selModel');
+      sel.innerHTML = '<option value="">— Select Model —</option>';
+      (models[this.value] || []).forEach(m => {
+        const o = document.createElement('option'); o.textContent = m; sel.appendChild(o);
+      });
+    });
+
+    // ── Category → Repair ──
+    document.getElementById('selCategory').addEventListener('change', function() {
+      const sel = document.getElementById('selRepair');
+      sel.innerHTML = '<option value="">— Select Repair —</option>';
+      Object.keys(repairs[this.value] || {}).forEach(r => {
+        const o = document.createElement('option'); o.textContent = r; sel.appendChild(o);
+      });
+    });
+
+    // ── Estimate ──
+    let lastEstimate = null;
+    document.getElementById('estimateBtn').addEventListener('click', () => {
+      const make     = document.getElementById('selMake').value;
+      const model    = document.getElementById('selModel').value;
+      const year     = document.getElementById('selYear').value;
+      const region   = document.getElementById('selRegion').value;
+      const category = document.getElementById('selCategory').value;
+      const repair   = document.getElementById('selRepair').value;
+
+      if (!category || !repair) { alert('Please select a repair category and specific repair.'); return; }
+
+      const data = repairs[category][repair];
+      if (!data) return;
+
+      const mult = 1 + (regionMults[region] || 0);
+      const fmt = (n) => '$' + Math.round(n * mult).toLocaleString();
+      const range = (arr) => `${fmt(arr[0])} – ${fmt(arr[1])}`;
+
+      document.getElementById('resultTitle').textContent =
+        `${repair}${make ? ' — ' + make + (model ? ' ' + model : '') : ''}`;
+
+      const diffMap = { easy:'Easy', moderate:'Moderate', advanced:'Advanced', professional:'Professional Only' };
+      const diffEl = document.getElementById('diffBadge');
+      diffEl.textContent = diffMap[data.diff] || data.diff;
+      diffEl.className = `diff-badge diff-${data.diff}`;
+
+      document.getElementById('costDealer').textContent = range(data.dealer);
+      document.getElementById('costIndie').textContent  = range(data.indie);
+      document.getElementById('costDIY').textContent    = data.diy ? range(data.diy) : 'Not recommended';
+      document.getElementById('laborHours').textContent =
+        `${data.labor[0]}–${data.labor[1]}`;
+      document.getElementById('regionMult').textContent =
+        region ? regionLabels[region] : 'No region selected';
+
+      const r2rEl = document.getElementById('r2rBadge');
+      if (r2rRepairs.includes(repair)) {
+        r2rEl.innerHTML = `<span class="r2r-badge r2r-ok">✓ R2R Supported — independent shops can access parts &amp; diagnostics</span>`;
+      } else {
+        r2rEl.innerHTML = `<span class="r2r-badge r2r-check">⚠ Check State Law — R2R coverage varies for this repair type</span>`;
+      }
+
+      lastEstimate = { make, model, year, repair, dealer: range(data.dealer), indie: range(data.indie), diy: data.diy ? range(data.diy) : 'N/A', saved: new Date().toLocaleDateString() };
+
+      document.getElementById('resultsPanel').classList.add('visible');
+      document.getElementById('resultsPanel').scrollIntoView({ behavior:'smooth', block:'nearest' });
+    });
+
+    // ── Save estimate ──
+    document.getElementById('saveEstBtn').addEventListener('click', () => {
+      if (!lastEstimate) return;
+      const saved = JSON.parse(localStorage.getItem('repairiq_saved') || '[]');
+      saved.unshift(lastEstimate);
+      localStorage.setItem('repairiq_saved', JSON.stringify(saved.slice(0, 20)));
+      renderSaved();
+      alert('Estimate saved!');
+    });
+
+    // ── Saved list ──
+    function renderSaved() {
+      const saved = JSON.parse(localStorage.getItem('repairiq_saved') || '[]');
+      const list = document.getElementById('savedList');
+      if (!saved.length) {
+        list.innerHTML = '<p class="empty-msg">No saved estimates yet. Run a calculation and hit Save.</p>';
+        return;
+      }
+      list.innerHTML = saved.map((e, i) => `
+        <div class="saved-card">
+          <button class="del-saved" data-idx="${i}" title="Delete">✕</button>
+          <h4>${e.repair}${e.make ? ' — ' + e.make + (e.model ? ' ' + e.model : '') : ''}</h4>
+          <p>Dealer: ${e.dealer} &nbsp;·&nbsp; Indie: ${e.indie} &nbsp;·&nbsp; DIY: ${e.diy}</p>
+          <p style="margin-top:0.3rem;">${e.year || ''} &nbsp;·&nbsp; Saved ${e.saved}</p>
+        </div>
+      `).join('');
+    }
+
+    document.getElementById('savedList').addEventListener('click', e => {
+      const btn = e.target.closest('.del-saved');
+      if (!btn) return;
+      const saved = JSON.parse(localStorage.getItem('repairiq_saved') || '[]');
+      saved.splice(parseInt(btn.dataset.idx), 1);
+      localStorage.setItem('repairiq_saved', JSON.stringify(saved));
+      renderSaved();
+    });
+
+    // ── Tabs ──
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+        if (btn.dataset.tab === 'saved') renderSaved();
+      });
+    });
+
+    // ── PWA ──
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js'));
+    }
+  </script>
+</body>
+</html>

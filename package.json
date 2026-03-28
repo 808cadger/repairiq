@@ -1,0 +1,11 @@
+{
+  "name": "repairiq",
+  "version": "1.0.0",
+  "description": "RepairIQ — Car repair cost calculator with right-to-repair data",
+  "author": "Christopher Cadger <cadger808@codeberg.org>",
+  "license": "UNLICENSED",
+  "overrides": {
+    "picomatch": ">=4.0.2",
+    "brace-expansion": ">=2.0.1"
+  }
+}
