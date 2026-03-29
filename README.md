@@ -21,7 +21,7 @@ RepairIQ tells you the fair price range for any car repair before you walk into 
 
 ## Install
 
-[**Live App →**](https://cadger808.codeberg.page/repairiq) · [Releases](https://codeberg.org/cadger808/repairiq/releases)
+[**Live App →**](https://cadger808.codeberg.page/repairiq) · [**Download APK →**](https://codeberg.org/cadger808/repairiq/releases/download/v1.0.0/RepairIQ-v1.0.0.apk) · [Releases](https://codeberg.org/cadger808/repairiq/releases)
 
 ## Deploy
 
