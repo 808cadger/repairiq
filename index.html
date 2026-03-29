@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>RepairIQ — Know What You Should Pay</title>
-  <meta name="description" content="Car repair cost calculator with right-to-repair state data." />
+  <title>RepairIQ — Shop Edition</title>
+  <meta name="description" content="AI-powered repair quoting and job tracking for auto repair shops." />
   <meta name="theme-color" content="#f59e0b" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://overpass-api.de; font-src 'self'; frame-src 'none'; base-uri 'self'; form-action 'self';" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://api.anthropic.com; font-src 'self'; frame-src 'none'; base-uri 'self'; form-action 'self';" />
   <link rel="manifest" href="./manifest.json" />
   <link rel="apple-touch-icon" href="./icons/icon-192.png" />
   <style>
@@ -35,301 +35,343 @@
     }
 
     header {
-      padding: 1.4rem 1.8rem 1rem;
+      padding: 1.1rem 1.6rem 0.9rem;
       border-bottom: 1px solid var(--border);
-      background: rgba(11,13,20,0.92);
+      background: rgba(11,13,20,0.94);
       backdrop-filter: blur(10px);
       position: sticky; top: 0; z-index: 50;
+      display: flex; align-items: center; justify-content: space-between;
     }
-    .logo { font-size: 1.5rem; font-weight: 800; }
+    .logo { font-size: 1.35rem; font-weight: 800; }
     .logo span { color: var(--accent); }
-    .tagline { font-size: 0.82rem; color: var(--muted); margin-top: 0.15rem; }
+    .shop-label { font-size: 0.8rem; color: var(--muted); margin-top: 0.1rem; }
+    .settings-gear {
+      background: none; border: 1px solid var(--border);
+      color: var(--muted); font-size: 1.15rem;
+      padding: 0.38rem 0.6rem; border-radius: 8px; cursor: pointer;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .settings-gear:hover { color: var(--accent); border-color: var(--accent); }
 
     /* ── Tabs ── */
     .tabs {
-      display: flex; gap: 0; border-bottom: 1px solid var(--border);
-      background: var(--surface);
+      display: flex; border-bottom: 1px solid var(--border);
+      background: var(--surface); overflow-x: auto; -webkit-overflow-scrolling: touch;
     }
     .tab-btn {
-      flex: 1; padding: 0.9rem 0.5rem; border: none;
+      flex: 1; min-width: 70px; padding: 0.85rem 0.5rem; border: none;
       background: transparent; color: var(--muted);
-      font-size: 0.85rem; font-weight: 600; cursor: pointer;
+      font-size: 0.83rem; font-weight: 700; cursor: pointer;
       border-bottom: 2px solid transparent;
-      transition: color 0.15s, border-color 0.15s;
+      transition: color 0.15s, border-color 0.15s; white-space: nowrap;
     }
     .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
     .tab-panel { display: none; }
     .tab-panel.active { display: block; }
 
-    /* ── Sections ── */
+    .inner { padding: 1.5rem 1.6rem; max-width: 760px; }
     .section-label {
-      font-size: 0.72rem; font-weight: 700; letter-spacing: 0.14em;
-      text-transform: uppercase; color: var(--accent); margin-bottom: 0.5rem;
+      font-size: 0.7rem; font-weight: 700; letter-spacing: 0.14em;
+      text-transform: uppercase; color: var(--accent); margin-bottom: 0.45rem;
     }
-    .inner { padding: 2rem 1.8rem; max-width: 760px; }
 
     /* ── Form ── */
     .form-grid {
       display: grid; grid-template-columns: 1fr 1fr;
-      gap: 1rem; margin-bottom: 1.4rem;
+      gap: 0.85rem; margin-bottom: 1.1rem;
     }
-    @media (max-width: 560px) { .form-grid { grid-template-columns: 1fr; } }
+    .form-grid.three { grid-template-columns: 1fr 1fr 1fr; }
+    @media (max-width: 520px) { .form-grid, .form-grid.three { grid-template-columns: 1fr; } }
+    .form-group { display: flex; flex-direction: column; gap: 0.3rem; }
     .form-group label {
-      display: block; font-size: 0.78rem; font-weight: 700;
-      color: var(--muted); margin-bottom: 0.35rem; letter-spacing: 0.04em;
-      text-transform: uppercase;
+      font-size: 0.72rem; font-weight: 700; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.05em;
     }
-    .form-select {
-      width: 100%; padding: 0.65rem 0.9rem;
+    .form-input, .form-select, .form-textarea {
+      width: 100%; padding: 0.62rem 0.88rem;
       background: var(--surface2); border: 1px solid var(--border);
       border-radius: 8px; color: var(--text); font-size: 0.88rem;
-      outline: none; cursor: pointer;
-      transition: border-color 0.15s;
-      -webkit-appearance: none;
+      outline: none; transition: border-color 0.15s;
+      font-family: inherit;
+    }
+    .form-input:focus, .form-select:focus, .form-textarea:focus { border-color: var(--accent); }
+    .form-input::placeholder, .form-textarea::placeholder { color: var(--muted); }
+    .form-select {
+      -webkit-appearance: none; cursor: pointer;
       background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238892a4' fill='none' stroke-width='1.5'/%3E%3C/svg%3E");
       background-repeat: no-repeat; background-position: right 0.9rem center;
       padding-right: 2.2rem;
     }
-    .form-select:focus { border-color: var(--accent); }
-    .btn-estimate {
-      width: 100%; padding: 0.9rem; border-radius: var(--radius);
+    .form-textarea { resize: vertical; min-height: 80px; line-height: 1.5; }
+
+    .divider {
+      display: flex; align-items: center; gap: 0.7rem;
+      color: var(--muted); font-size: 0.75rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.1em; margin: 1rem 0;
+    }
+    .divider::before, .divider::after {
+      content: ''; flex: 1; height: 1px; background: var(--border);
+    }
+
+    /* ── Buttons ── */
+    .btn-primary {
+      width: 100%; padding: 0.88rem; border-radius: var(--radius);
       background: linear-gradient(135deg, var(--accent), #d97706);
-      color: #000; font-size: 1rem; font-weight: 800;
+      color: #000; font-size: 0.97rem; font-weight: 800;
       border: none; cursor: pointer;
       transition: opacity 0.15s, transform 0.15s cubic-bezier(0.4,0,0.2,1);
       letter-spacing: 0.02em;
     }
-    .btn-estimate:hover { opacity: 0.88; transform: translateY(-1px); }
-
-    /* ── Results ── */
-    #resultsPanel {
-      display: none; margin-top: 1.5rem;
-      background: var(--surface2); border: 1px solid var(--border);
-      border-radius: var(--radius); overflow: hidden;
-    }
-    #resultsPanel.visible { display: block; }
-    .results-header {
-      padding: 1rem 1.4rem;
-      border-bottom: 1px solid var(--border);
-      display: flex; align-items: center; justify-content: space-between;
-      flex-wrap: wrap; gap: 0.6rem;
-    }
-    .results-header h3 { font-size: 1.1rem; font-weight: 800; }
-    .diff-badge {
-      font-size: 0.75rem; font-weight: 700; padding: 0.25rem 0.7rem;
-      border-radius: 999px; border: 1px solid;
-    }
-    .diff-easy    { background: rgba(34,197,94,0.12); border-color: rgba(34,197,94,0.3); color: var(--green); }
-    .diff-moderate { background: rgba(245,158,11,0.12); border-color: rgba(245,158,11,0.3); color: var(--accent); }
-    .diff-advanced { background: rgba(251,146,60,0.12); border-color: rgba(251,146,60,0.3); color: var(--orange); }
-    .diff-professional { background: rgba(239,68,68,0.12); border-color: rgba(239,68,68,0.3); color: var(--red); }
-    .results-body { padding: 1.2rem 1.4rem; }
-    .cost-grid {
-      display: grid; grid-template-columns: repeat(3, 1fr);
-      gap: 0.8rem; margin-bottom: 1.2rem;
-    }
-    @media (max-width: 480px) { .cost-grid { grid-template-columns: 1fr 1fr; } }
-    .cost-card {
-      background: var(--surface); border: 1px solid var(--border);
-      border-radius: 8px; padding: 0.9rem; text-align: center;
-    }
-    .cost-label { font-size: 0.7rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.4rem; }
-    .cost-value { font-size: 1.1rem; font-weight: 800; color: var(--text); }
-    .cost-value.green { color: var(--green); }
-    .cost-value.amber { color: var(--accent); }
-    .cost-value.blue  { color: var(--blue); }
-    .labor-row {
-      display: flex; align-items: center; gap: 0.5rem;
-      font-size: 0.85rem; color: var(--muted); margin-bottom: 0.8rem;
-    }
-    .labor-row span { color: var(--text); font-weight: 700; }
-    .r2r-badge {
-      display: inline-flex; align-items: center; gap: 0.4rem;
-      padding: 0.35rem 0.85rem; border-radius: 999px;
-      font-size: 0.78rem; font-weight: 700; border: 1px solid;
-      margin-bottom: 1rem;
-    }
-    .r2r-ok     { background: rgba(34,197,94,0.1);  border-color: rgba(34,197,94,0.3); color: var(--green); }
-    .r2r-check  { background: rgba(251,146,60,0.1); border-color: rgba(251,146,60,0.3); color: var(--orange); }
-    .btn-save-est {
-      padding: 0.55rem 1.2rem; border-radius: 8px;
+    .btn-primary:hover  { opacity: 0.88; transform: translateY(-1px); }
+    .btn-primary:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+    .btn-secondary {
+      padding: 0.62rem 1.2rem; border-radius: 8px;
       background: transparent; border: 1px solid var(--accent);
       color: var(--accent); font-size: 0.85rem; font-weight: 700;
       cursor: pointer; transition: background 0.15s;
     }
-    .btn-save-est:hover { background: rgba(245,158,11,0.1); }
+    .btn-secondary:hover { background: rgba(245,158,11,0.1); }
+    .btn-ghost {
+      padding: 0.55rem 1rem; border-radius: 8px;
+      background: transparent; border: 1px solid var(--border);
+      color: var(--muted); font-size: 0.82rem; font-weight: 600;
+      cursor: pointer; transition: color 0.15s, border-color 0.15s;
+    }
+    .btn-ghost:hover { color: var(--text); border-color: var(--text); }
 
-    /* ── R2R table ── */
-    .r2r-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; margin-top: 1rem; }
-    .r2r-table th {
-      text-align: left; padding: 0.6rem 0.8rem;
+    .btn-row { display: flex; gap: 0.7rem; margin-top: 1rem; flex-wrap: wrap; }
+
+    /* ── Estimate results ── */
+    .results-panel {
+      display: none; margin-top: 1.3rem;
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: var(--radius); overflow: hidden;
+    }
+    .results-panel.visible { display: block; }
+    .results-header {
+      padding: 0.9rem 1.3rem;
       border-bottom: 1px solid var(--border);
-      font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted);
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 0.5rem;
     }
-    .r2r-table td { padding: 0.6rem 0.8rem; border-bottom: 1px solid rgba(30,45,74,0.5); }
-    .status-badge {
-      font-size: 0.72rem; font-weight: 700; padding: 0.2rem 0.55rem;
-      border-radius: 999px; border: 1px solid;
-    }
-    .s-passed  { background: rgba(34,197,94,0.1); border-color: rgba(34,197,94,0.3); color: var(--green); }
-    .s-pending { background: rgba(245,158,11,0.1); border-color: rgba(245,158,11,0.3); color: var(--accent); }
-    .s-none    { background: rgba(239,68,68,0.08); border-color: rgba(239,68,68,0.25); color: var(--red); }
+    .results-header h3 { font-size: 1rem; font-weight: 800; }
+    .results-body { padding: 1.1rem 1.3rem; }
 
-    /* ── Saved estimates ── */
-    .saved-card {
+    .cost-grid-shop {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: 0.7rem; margin-bottom: 1rem;
+    }
+    @media (max-width: 480px) { .cost-grid-shop { grid-template-columns: 1fr 1fr; } }
+    .cost-card {
       background: var(--surface); border: 1px solid var(--border);
-      border-radius: var(--radius); padding: 1rem 1.2rem;
-      margin-bottom: 0.8rem; position: relative;
+      border-radius: 8px; padding: 0.85rem; text-align: center;
     }
-    .saved-card h4 { font-size: 0.95rem; font-weight: 700; margin-bottom: 0.3rem; }
-    .saved-card p { font-size: 0.82rem; color: var(--muted); }
-    .del-saved {
-      position: absolute; top: 0.7rem; right: 0.8rem;
-      background: none; border: none; color: var(--muted);
-      cursor: pointer; font-size: 1rem; transition: color 0.15s;
+    .cost-label { font-size: 0.68rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.35rem; }
+    .cost-value { font-size: 1.05rem; font-weight: 800; }
+    .cost-value.amber { color: var(--accent); }
+    .cost-value.blue  { color: var(--blue); }
+    .cost-value.green { color: var(--green); }
+    .labor-note {
+      font-size: 0.82rem; color: var(--muted); margin-bottom: 0.8rem;
+      display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap;
     }
-    .del-saved:hover { color: var(--red); }
-    .empty-msg { font-size: 0.85rem; color: var(--muted); padding: 1.5rem 0; }
-
-    /* ── Mechanic finder ── */
-    .mech-top {
-      display: flex; align-items: flex-start; justify-content: space-between;
-      flex-wrap: wrap; gap: 1rem; margin-bottom: 1.4rem;
+    .labor-note span { color: var(--text); font-weight: 700; }
+    .ai-summary {
+      font-size: 0.84rem; color: var(--muted); line-height: 1.6;
+      background: rgba(245,158,11,0.06); border: 1px solid rgba(245,158,11,0.18);
+      border-radius: 8px; padding: 0.8rem 1rem; margin-bottom: 1rem;
     }
-    .mech-controls { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
-    .btn-locate {
-      display: inline-flex; align-items: center; gap: 0.5rem;
-      padding: 0.72rem 1.3rem; border-radius: 999px;
-      background: linear-gradient(135deg, var(--accent), #d97706);
-      color: #000; font-size: 0.9rem; font-weight: 800; border: none; cursor: pointer;
-      box-shadow: 0 3px 14px rgba(245,158,11,0.35);
-      transition: opacity 0.15s, transform 0.15s cubic-bezier(0.4,0,0.2,1);
-    }
-    .btn-locate:hover  { opacity: 0.88; transform: translateY(-1px); }
-    .btn-locate:disabled { opacity: 0.48; cursor: not-allowed; transform: none; }
-    .radius-sel {
-      padding: 0.45rem 0.8rem; border-radius: 8px;
-      background: var(--surface2); border: 1px solid var(--border);
-      color: var(--text); font-size: 0.82rem; outline: none; cursor: pointer;
-    }
-    .shop-type-sel {
-      padding: 0.45rem 0.8rem; border-radius: 8px;
-      background: var(--surface2); border: 1px solid var(--border);
-      color: var(--text); font-size: 0.82rem; outline: none; cursor: pointer;
-    }
-    .mech-status {
-      font-size: 0.82rem; min-height: 1.2rem; margin-bottom: 1rem;
-      color: var(--muted);
-    }
-    .mech-status.loading { color: var(--accent); }
-    .mech-status.error   { color: var(--red); }
-    .mech-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-      gap: 1rem;
-    }
-    .mech-card {
-      background: var(--surface); border: 1px solid var(--border);
-      border-radius: var(--radius); padding: 1.1rem 1.2rem;
-      position: relative; overflow: hidden;
-      transition: border-color 0.18s cubic-bezier(0.4,0,0.2,1), transform 0.18s;
-    }
-    .mech-card::before {
-      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
-      background: linear-gradient(90deg, var(--accent), var(--blue));
-      opacity: 0; transition: opacity 0.18s;
-    }
-    .mech-card:hover { border-color: rgba(245,158,11,0.4); transform: translateY(-2px); }
-    .mech-card:hover::before { opacity: 1; }
-    .mech-name { font-weight: 800; font-size: 0.97rem; margin-bottom: 0.3rem; }
-    .mech-meta { display: flex; gap: 0.45rem; flex-wrap: wrap; align-items: center; margin-bottom: 0.55rem; }
-    .mech-type-badge {
-      font-size: 0.68rem; font-weight: 700; padding: 0.15rem 0.5rem;
-      border-radius: 999px; background: rgba(245,158,11,0.12);
-      border: 1px solid rgba(245,158,11,0.3); color: var(--accent);
-      text-transform: capitalize;
-    }
-    .mech-dist { font-size: 0.72rem; color: var(--muted); }
-    .mech-hours {
-      font-size: 0.78rem; color: var(--green); margin-bottom: 0.4rem;
-    }
-    .mech-addr { font-size: 0.8rem; color: var(--muted); margin-bottom: 0.3rem; line-height: 1.4; }
-    .mech-phone { font-size: 0.8rem; color: var(--muted); margin-bottom: 0.8rem; }
-    .mech-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
-    .btn-dir, .btn-call {
-      display: inline-flex; align-items: center; gap: 0.35rem;
-      padding: 0.38rem 0.85rem; border-radius: 7px; font-size: 0.78rem; font-weight: 700;
-      text-decoration: none; border: 1px solid; cursor: pointer; transition: background 0.15s;
-    }
-    .btn-dir  { border-color: var(--accent); color: var(--accent); background: transparent; }
-    .btn-dir:hover  { background: rgba(245,158,11,0.1); text-decoration: none; }
-    .btn-call { border-color: var(--blue); color: var(--blue); background: transparent; }
-    .btn-call:hover { background: rgba(59,130,246,0.1); text-decoration: none; }
-    .mech-empty { font-size: 0.85rem; color: var(--muted); padding: 1.5rem 0; text-align: center; }
+    .ai-indicator { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.72rem; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.4rem; }
     .spinner {
-      display: inline-block; width: 13px; height: 13px;
+      display: inline-block; width: 12px; height: 12px;
       border: 2px solid rgba(245,158,11,0.3); border-top-color: var(--accent);
-      border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 0.3rem;
+      border-radius: 50%; animation: spin 0.7s linear infinite;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
+    /* ── Quote tab ── */
+    .quote-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); overflow: hidden; margin-bottom: 1.2rem;
+    }
+    .quote-header {
+      background: linear-gradient(135deg, rgba(245,158,11,0.18), rgba(245,158,11,0.06));
+      border-bottom: 1px solid var(--border);
+      padding: 1.1rem 1.3rem;
+    }
+    .quote-shop-name { font-size: 1.1rem; font-weight: 800; color: var(--text); margin-bottom: 0.15rem; }
+    .quote-shop-sub  { font-size: 0.78rem; color: var(--muted); }
+    .quote-meta { padding: 1rem 1.3rem; border-bottom: 1px solid var(--border); }
+    .quote-meta-row { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 0.35rem; }
+    .quote-meta-label { font-size: 0.72rem; font-weight: 700; color: var(--muted); text-transform: uppercase; }
+    .quote-meta-val   { font-size: 0.88rem; font-weight: 700; color: var(--text); }
+    .quote-lines { padding: 1rem 1.3rem; border-bottom: 1px solid var(--border); }
+    .quote-line {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 0.5rem 0; border-bottom: 1px solid rgba(30,45,74,0.5);
+      font-size: 0.86rem;
+    }
+    .quote-line:last-child { border-bottom: none; }
+    .quote-line-name  { color: var(--text); }
+    .quote-line-range { font-weight: 700; color: var(--text); }
+    .quote-total {
+      padding: 0.9rem 1.3rem;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .quote-total-label { font-size: 0.85rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+    .quote-total-value { font-size: 1.25rem; font-weight: 800; color: var(--accent); }
+    .quote-note { font-size: 0.75rem; color: var(--muted); padding: 0 1.3rem 1rem; line-height: 1.5; }
+    .empty-state { text-align: center; padding: 3rem 1rem; color: var(--muted); font-size: 0.9rem; line-height: 1.7; }
+    .empty-state-icon { font-size: 2.5rem; margin-bottom: 0.75rem; }
+
+    /* ── Jobs tab ── */
+    .job-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 0.95rem 1.1rem;
+      margin-bottom: 0.7rem; position: relative;
+      transition: border-color 0.15s;
+    }
+    .job-card:hover { border-color: rgba(245,158,11,0.35); }
+    .job-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.6rem; margin-bottom: 0.4rem; }
+    .job-client  { font-size: 0.97rem; font-weight: 800; }
+    .job-vehicle { font-size: 0.8rem; color: var(--muted); margin-bottom: 0.25rem; }
+    .job-repair  { font-size: 0.82rem; color: var(--text); }
+    .job-total   { font-size: 0.97rem; font-weight: 800; color: var(--accent); white-space: nowrap; }
+    .job-footer  { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.65rem; flex-wrap: wrap; }
+    .job-date    { font-size: 0.72rem; color: var(--muted); margin-right: auto; }
+    .status-btn {
+      font-size: 0.7rem; font-weight: 700; padding: 0.2rem 0.6rem;
+      border-radius: 999px; border: 1px solid; cursor: pointer;
+      transition: all 0.15s; background: transparent;
+    }
+    .s-estimate    { border-color: rgba(245,158,11,0.4); color: var(--accent); }
+    .s-estimate:hover { background: rgba(245,158,11,0.12); }
+    .s-in-progress { border-color: rgba(59,130,246,0.4); color: var(--blue); }
+    .s-in-progress:hover { background: rgba(59,130,246,0.1); }
+    .s-done        { border-color: rgba(34,197,94,0.4); color: var(--green); }
+    .s-done:hover  { background: rgba(34,197,94,0.08); }
+    .job-view-btn {
+      font-size: 0.72rem; font-weight: 700; padding: 0.2rem 0.65rem;
+      border-radius: 6px; border: 1px solid var(--border);
+      background: none; color: var(--muted); cursor: pointer;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .job-view-btn:hover { color: var(--accent); border-color: var(--accent); }
+    .del-job {
+      background: none; border: none; color: var(--muted);
+      cursor: pointer; font-size: 0.9rem; transition: color 0.15s;
+      padding: 0.1rem 0.3rem;
+    }
+    .del-job:hover { color: var(--red); }
+
+    /* ── Settings tab ── */
+    .settings-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 1.2rem 1.4rem; margin-bottom: 1.1rem;
+    }
+    .settings-card h3 { font-size: 0.88rem; font-weight: 800; margin-bottom: 0.9rem; color: var(--text); }
+    .settings-fields { display: flex; flex-direction: column; gap: 0.7rem; }
+    .settings-hint  { font-size: 0.75rem; color: var(--muted); margin-top: 0.25rem; line-height: 1.5; }
+    .save-badge {
+      display: none; font-size: 0.78rem; font-weight: 700; color: var(--green);
+      margin-left: 0.6rem; vertical-align: middle;
+    }
+    .save-badge.visible { display: inline; }
+
+    /* ── Setup banner ── */
+    .setup-banner {
+      background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.3);
+      border-radius: var(--radius); padding: 0.9rem 1.1rem; margin-bottom: 1.1rem;
+      font-size: 0.84rem; color: var(--text); line-height: 1.55;
+    }
+    .setup-banner strong { color: var(--accent); }
+
+    /* ── Error ── */
+    .error-msg {
+      display: none; background: rgba(239,68,68,0.1);
+      border: 1px solid rgba(239,68,68,0.3); border-radius: 8px;
+      padding: 0.75rem 1rem; font-size: 0.83rem; color: var(--red);
+      margin-top: 0.8rem;
+    }
+    .error-msg.visible { display: block; }
+
     footer {
-      text-align: center; padding: 1.5rem;
+      text-align: center; padding: 1.4rem;
       border-top: 1px solid var(--border);
-      font-size: 0.82rem; color: var(--muted);
+      font-size: 0.8rem; color: var(--muted);
     }
   </style>
 </head>
 <body>
 
   <header>
-    <div class="logo">🔧 <span>RepairIQ</span></div>
-    <div class="tagline">Know what you should pay before you walk in.</div>
+    <div>
+      <div class="logo">🔧 <span>RepairIQ</span></div>
+      <div class="shop-label" id="headerShopName">Shop Edition</div>
+    </div>
+    <button class="settings-gear" onclick="openTab('settings')" title="Shop Settings">⚙️</button>
   </header>
 
   <div class="tabs">
-    <button class="tab-btn active" data-tab="calc">Calculator</button>
-    <button class="tab-btn" data-tab="mechanic">Find Mechanic</button>
-    <button class="tab-btn" data-tab="r2r">Right to Repair</button>
-    <button class="tab-btn" data-tab="saved">Saved</button>
+    <button class="tab-btn active" data-tab="estimate">Estimate</button>
+    <button class="tab-btn" data-tab="quote">Quote</button>
+    <button class="tab-btn" data-tab="jobs">Jobs</button>
+    <button class="tab-btn" data-tab="settings">Settings</button>
   </div>
 
-  <!-- Calculator tab -->
-  <div class="tab-panel active" id="tab-calc">
+  <!-- ══════════════════════════════════════════
+       ESTIMATE TAB
+  ══════════════════════════════════════════ -->
+  <div class="tab-panel active" id="tab-estimate">
     <div class="inner">
-      <p class="section-label">Repair Cost Estimator</p>
-      <h2 style="font-size:1.2rem;font-weight:800;margin-bottom:1.2rem;">Get Your Estimate</h2>
+      <p class="section-label">New Job Estimate</p>
+      <h2 style="font-size:1.15rem;font-weight:800;margin-bottom:1.1rem;">Client + Vehicle</h2>
+
+      <div id="setupNotice" class="setup-banner" style="display:none">
+        <strong>Set your shop rate first.</strong> Go to Settings to enter your hourly labor rate and shop name — it takes 30 seconds and makes quotes accurate.
+        <button onclick="openTab('settings')" style="margin-left:0.5rem;background:none;border:none;color:var(--accent);font-weight:800;cursor:pointer;font-size:0.84rem;">Open Settings →</button>
+      </div>
 
       <div class="form-grid">
+        <div class="form-group" style="grid-column:1/-1">
+          <label>Client Name</label>
+          <input class="form-input" id="clientName" type="text" placeholder="e.g. John Kaena" autocomplete="off">
+        </div>
+      </div>
+
+      <div class="form-grid three">
+        <div class="form-group">
+          <label>Year</label>
+          <select class="form-select" id="selYear"><option value="">— Year —</option></select>
+        </div>
         <div class="form-group">
           <label>Make</label>
           <select class="form-select" id="selMake">
-            <option value="">— Select Make —</option>
+            <option value="">— Make —</option>
             <option>Toyota</option><option>Honda</option><option>Ford</option>
             <option>Chevrolet</option><option>BMW</option><option>Nissan</option>
-            <option>Subaru</option><option>Hyundai</option><option>Kia</option><option>Dodge</option>
+            <option>Subaru</option><option>Hyundai</option><option>Kia</option>
+            <option>Dodge</option><option>Jeep</option><option>GMC</option>
           </select>
         </div>
         <div class="form-group">
           <label>Model</label>
-          <select class="form-select" id="selModel"><option value="">— Select Make First —</option></select>
+          <select class="form-select" id="selModel"><option value="">— Select Make —</option></select>
         </div>
-        <div class="form-group">
-          <label>Year</label>
-          <select class="form-select" id="selYear">
-            <option value="">— Year —</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label>Region</label>
-          <select class="form-select" id="selRegion">
-            <option value="">— Region —</option>
-            <option value="hi">Hawaii</option><option value="ca">California</option>
-            <option value="ny">New York</option><option value="tx">Texas</option>
-            <option value="fl">Florida</option><option value="mw">Midwest</option>
-            <option value="se">Southeast</option><option value="pnw">Pacific Northwest</option>
-          </select>
-        </div>
+      </div>
+
+      <!-- AI free-text input -->
+      <div class="form-group" style="margin-bottom:0.9rem">
+        <label>Describe the Job (AI-powered)</label>
+        <textarea class="form-textarea" id="jobDesc" placeholder="e.g. Front brake pads and rotors, customer hearing grinding — also check rear pads while in there"></textarea>
+      </div>
+      <button class="btn-primary" id="aiEstimateBtn" onclick="runAiEstimate()">
+        ✦ Generate AI Estimate →
+      </button>
+
+      <div class="divider">or use lookup</div>
+
+      <div class="form-grid">
         <div class="form-group">
           <label>Repair Category</label>
           <select class="form-select" id="selCategory">
@@ -341,211 +383,290 @@
         </div>
         <div class="form-group">
           <label>Specific Repair</label>
-          <select class="form-select" id="selRepair"><option value="">— Select Category First —</option></select>
+          <select class="form-select" id="selRepair"><option value="">— Select Category —</option></select>
         </div>
       </div>
+      <button class="btn-primary" id="lookupBtn" onclick="runLookupEstimate()">Get Lookup Estimate →</button>
 
-      <button class="btn-estimate" id="estimateBtn">Get Estimate →</button>
+      <div class="error-msg" id="estimateError"></div>
 
-      <div id="resultsPanel">
+      <!-- Results -->
+      <div class="results-panel" id="resultsPanel">
         <div class="results-header">
           <h3 id="resultTitle"></h3>
-          <span class="diff-badge" id="diffBadge"></span>
         </div>
         <div class="results-body">
-          <div class="cost-grid">
+          <div id="aiSummaryWrap"></div>
+          <div class="cost-grid-shop">
             <div class="cost-card">
-              <div class="cost-label">Dealer</div>
-              <div class="cost-value amber" id="costDealer"></div>
+              <div class="cost-label">Labor Cost</div>
+              <div class="cost-value amber" id="costLabor">—</div>
             </div>
             <div class="cost-card">
-              <div class="cost-label">Indie Shop</div>
-              <div class="cost-value blue" id="costIndie"></div>
+              <div class="cost-label">Parts Est.</div>
+              <div class="cost-value blue" id="costParts">—</div>
             </div>
             <div class="cost-card">
-              <div class="cost-label">DIY (Parts)</div>
-              <div class="cost-value green" id="costDIY"></div>
+              <div class="cost-label">Your Total</div>
+              <div class="cost-value green" id="costTotal">—</div>
             </div>
           </div>
-          <div class="labor-row">⏱ Labor estimate: <span id="laborHours"></span> hours
-            &nbsp;·&nbsp; Region multiplier: <span id="regionMult"></span>
+          <div class="labor-note" id="laborNote"></div>
+          <div class="btn-row">
+            <button class="btn-secondary" onclick="saveJob()">💾 Save Job</button>
+            <button class="btn-secondary" onclick="viewQuote()">📄 View Quote</button>
           </div>
-          <div id="r2rBadge"></div>
-          <button class="btn-save-est" id="saveEstBtn">Save Estimate</button>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Find Mechanic tab -->
-  <div class="tab-panel" id="tab-mechanic">
+  <!-- ══════════════════════════════════════════
+       QUOTE TAB
+  ══════════════════════════════════════════ -->
+  <div class="tab-panel" id="tab-quote">
     <div class="inner">
-      <p class="section-label">Find a Mechanic</p>
-      <h2 style="font-size:1.2rem;font-weight:800;margin-bottom:0.6rem;">Shops Near You</h2>
-      <p style="font-size:0.85rem;color:var(--muted);margin-bottom:1.4rem;max-width:560px;line-height:1.55;">
-        Finds independent and dealer auto repair shops using OpenStreetMap data — no account needed.
-      </p>
+      <p class="section-label">Client Quote</p>
+      <div id="quoteContent">
+        <div class="empty-state">
+          <div class="empty-state-icon">📄</div>
+          Run an estimate first, then tap <strong style="color:var(--accent)">View Quote</strong> to generate a customer-ready quote.
+        </div>
+      </div>
+    </div>
+  </div>
 
-      <div class="mech-top">
-        <div class="mech-controls">
-          <button class="btn-locate" id="mechLocateBtn">
-            📍 Use My Location
-          </button>
-          <select class="radius-sel" id="mechRadius">
-            <option value="3000">3 km</option>
-            <option value="5000" selected>5 km</option>
-            <option value="10000">10 km</option>
-            <option value="20000">20 km</option>
-          </select>
-          <select class="shop-type-sel" id="mechType">
-            <option value="all">All Shops</option>
-            <option value="car_repair">Auto Repair</option>
-            <option value="car_parts">Parts Store</option>
-            <option value="tyres">Tyre Shop</option>
-          </select>
+  <!-- ══════════════════════════════════════════
+       JOBS TAB
+  ══════════════════════════════════════════ -->
+  <div class="tab-panel" id="tab-jobs">
+    <div class="inner">
+      <p class="section-label">Job Log</p>
+      <h2 style="font-size:1.15rem;font-weight:800;margin-bottom:1.1rem;">Active &amp; Recent Jobs</h2>
+      <div id="jobsList"></div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       SETTINGS TAB
+  ══════════════════════════════════════════ -->
+  <div class="tab-panel" id="tab-settings">
+    <div class="inner">
+      <p class="section-label">Shop Settings</p>
+      <h2 style="font-size:1.15rem;font-weight:800;margin-bottom:1.1rem;">Your Shop</h2>
+
+      <div class="settings-card">
+        <h3>Shop Info</h3>
+        <div class="settings-fields">
+          <div class="form-group">
+            <label>Shop Name</label>
+            <input class="form-input" id="sShopName" type="text" placeholder="e.g. Kaena Auto Works">
+          </div>
+          <div class="form-group">
+            <label>Phone Number</label>
+            <input class="form-input" id="sShopPhone" type="tel" placeholder="(808) 555-0100">
+          </div>
         </div>
       </div>
 
-      <div class="mech-status" id="mechStatus">Enable location to find nearby shops.</div>
-      <div class="mech-grid" id="mechGrid"></div>
+      <div class="settings-card">
+        <h3>Labor Rate</h3>
+        <div class="settings-fields">
+          <div class="form-group">
+            <label>Hourly Labor Rate ($/hr)</label>
+            <input class="form-input" id="sHourlyRate" type="number" min="50" max="300" placeholder="95">
+            <div class="settings-hint">Used to calculate labor costs in every estimate. National average for indie shops: $85–$125/hr. Hawaii typically runs $110–$150/hr.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-card">
+        <h3>AI Connection</h3>
+        <div class="settings-fields">
+          <div class="form-group">
+            <label>Claude API Key</label>
+            <input class="form-input" id="sApiKey" type="password" placeholder="sk-ant-api03-...">
+            <div class="settings-hint">Required for AI-powered job estimates. Get your key at <strong style="color:var(--accent)">console.anthropic.com</strong>. Stored on device only — never shared.</div>
+          </div>
+          <div style="background:rgba(34,197,94,0.07);border:1px solid rgba(34,197,94,0.2);border-radius:8px;padding:0.75rem 1rem;">
+            <div style="font-size:0.78rem;font-weight:700;color:var(--green);margin-bottom:0.3rem">No key? Use Demo Mode</div>
+            <div style="font-size:0.78rem;color:var(--muted);line-height:1.5">The lookup estimator works without an API key using built-in repair data. Add a key anytime to unlock AI-powered job descriptions.</div>
+          </div>
+        </div>
+      </div>
+
+      <button class="btn-primary" onclick="saveSettings()">Save Settings <span class="save-badge" id="saveBadge">✓ Saved</span></button>
     </div>
   </div>
 
-  <!-- R2R tab -->
-  <div class="tab-panel" id="tab-r2r">
-    <div class="inner">
-      <p class="section-label">Right to Repair</p>
-      <h2 style="font-size:1.2rem;font-weight:800;margin-bottom:0.75rem;">Know Your Rights</h2>
-      <p style="font-size:0.88rem;color:var(--muted);max-width:580px;line-height:1.6;margin-bottom:1.5rem;">
-        Right-to-repair laws require manufacturers to provide independent repair shops and consumers
-        with access to parts, tools, and diagnostic information. Without these laws, manufacturers
-        can restrict repairs to authorized dealers — inflating costs significantly.
-      </p>
-
-      <table class="r2r-table">
-        <thead>
-          <tr><th>State</th><th>Status</th><th>Notes</th></tr>
-        </thead>
-        <tbody>
-          <tr><td>Massachusetts</td><td><span class="status-badge s-passed">Passed</span></td><td>Auto data access law active since 2013/2021</td></tr>
-          <tr><td>New York</td><td><span class="status-badge s-passed">Passed</span></td><td>Digital Fair Repair Act signed 2022 (electronics)</td></tr>
-          <tr><td>Colorado</td><td><span class="status-badge s-pending">Pending</span></td><td>Legislation introduced; committee review</td></tr>
-          <tr><td>California</td><td><span class="status-badge s-pending">Pending</span></td><td>Multiple bills introduced; ongoing</td></tr>
-          <tr><td>Washington</td><td><span class="status-badge s-pending">Pending</span></td><td>SB 5190 in progress</td></tr>
-          <tr><td>Minnesota</td><td><span class="status-badge s-passed">Passed</span></td><td>Digital Fair Repair Act signed 2023</td></tr>
-          <tr><td>Texas</td><td><span class="status-badge s-none">No Law</span></td><td>No active legislation</td></tr>
-          <tr><td>Florida</td><td><span class="status-badge s-none">No Law</span></td><td>No active legislation</td></tr>
-          <tr><td>Hawaii</td><td><span class="status-badge s-pending">Pending</span></td><td>SB 2505 introduced</td></tr>
-        </tbody>
-      </table>
-
-      <p style="margin-top:1.2rem;font-size:0.78rem;color:var(--muted);">
-        <!-- TODO: link to ifixit.com/Right-to-Repair for current state tracker -->
-        Data current as of early 2026. Check iFixit or repair.org for real-time updates.
-      </p>
-    </div>
-  </div>
-
-  <!-- Saved tab -->
-  <div class="tab-panel" id="tab-saved">
-    <div class="inner">
-      <p class="section-label">Saved Estimates</p>
-      <div id="savedList"></div>
-    </div>
-  </div>
-
-  <div id="sw-avatar" data-context="RepairIQ — car repair cost calculator with right-to-repair state data, mechanic finder, and DIY vs dealer estimates"></div>
+  <div id="sw-avatar" data-context="RepairIQ Shop Edition — AI-powered repair quoting tool for auto repair shops and independent mechanics. Helps with job estimates, labor pricing, and customer quotes."></div>
   <script src="./api-client.js"></script>
   <script src="./avatar-widget.js"></script>
 
   <footer>
-    RepairIQ — Know your rights, know your costs. Pearl City, HI 🌺 &nbsp;·&nbsp;
+    RepairIQ Shop Edition — Pearl City, HI 🌺 &nbsp;·&nbsp;
     <a href="https://codeberg.org/cadger808/repairiq" target="_blank" rel="noopener" style="color:var(--accent);">Codeberg</a>
   </footer>
 
   <script>
-    // Aloha from Pearl City!
+    // Aloha from Pearl City! 🌺
 
-    // ── Data ──
+    // ═══════════════════════════════════════
+    //  REPAIR DATA
+    // ═══════════════════════════════════════
     const models = {
-      Toyota: ['Camry','Corolla','RAV4','Tacoma'],
-      Honda:  ['Civic','Accord','CR-V','Pilot'],
-      Ford:   ['F-150','Mustang','Explorer','Escape'],
-      Chevrolet: ['Silverado','Malibu','Equinox','Tahoe'],
-      BMW:    ['3 Series','5 Series','X3','X5'],
-      Nissan: ['Altima','Rogue','Sentra','Frontier'],
-      Subaru: ['Outback','Forester','Impreza','Crosstrek'],
-      Hyundai:['Elantra','Tucson','Santa Fe','Sonata'],
-      Kia:    ['Sorento','Sportage','Forte','Telluride'],
-      Dodge:  ['Ram 1500','Charger','Challenger','Durango'],
+      Toyota:    ['Camry','Corolla','RAV4','Tacoma','Highlander','4Runner'],
+      Honda:     ['Civic','Accord','CR-V','Pilot','Odyssey','Ridgeline'],
+      Ford:      ['F-150','Mustang','Explorer','Escape','Ranger','Edge'],
+      Chevrolet: ['Silverado','Malibu','Equinox','Tahoe','Colorado','Traverse'],
+      BMW:       ['3 Series','5 Series','X3','X5','7 Series'],
+      Nissan:    ['Altima','Rogue','Sentra','Frontier','Pathfinder'],
+      Subaru:    ['Outback','Forester','Impreza','Crosstrek','Legacy'],
+      Hyundai:   ['Elantra','Tucson','Santa Fe','Sonata','Palisade'],
+      Kia:       ['Sorento','Sportage','Forte','Telluride','Carnival'],
+      Dodge:     ['Ram 1500','Charger','Challenger','Durango','Journey'],
+      Jeep:      ['Wrangler','Grand Cherokee','Cherokee','Compass','Gladiator'],
+      GMC:       ['Sierra','Terrain','Acadia','Yukon','Canyon'],
     };
 
-    // repairs[category][repair] = { dealer:[lo,hi], indie:[lo,hi], diy:[lo,hi]|null, labor:[lo,hi], diff }
+    // repairs[category][repair] = { indie:[lo,hi] parts, labor:[lo,hi] hours }
+    // #ASSUMPTION: indie parts range is what a shop charges customers
     const repairs = {
       Engine: {
-        'Oil Change':     { dealer:[80,150],   indie:[40,80],   diy:[25,45],   labor:[0.3,0.7], diff:'easy' },
-        'Spark Plugs':    { dealer:[200,400],  indie:[100,200], diy:[30,80],   labor:[1,2],     diff:'moderate' },
-        'Timing Belt':    { dealer:[800,1200], indie:[500,900], diy:[120,200], labor:[4,6],     diff:'advanced' },
-        'Head Gasket':    { dealer:[1800,2800],indie:[1200,2000],diy:[400,600],labor:[8,12],    diff:'professional' },
+        'Oil Change':          { indie:[25,55],    labor:[0.3,0.7] },
+        'Spark Plugs':         { indie:[40,120],   labor:[1,2.5] },
+        'Timing Belt':         { indie:[120,220],  labor:[4,6] },
+        'Timing Chain':        { indie:[200,400],  labor:[6,10] },
+        'Head Gasket':         { indie:[350,700],  labor:[8,14] },
+        'Valve Cover Gasket':  { indie:[40,90],    labor:[1,2] },
+        'Serpentine Belt':     { indie:[25,60],    labor:[0.5,1] },
+        'Water Pump':          { indie:[80,180],   labor:[2,4] },
+        'Thermostat':          { indie:[20,55],    labor:[0.5,1.5] },
       },
       Brakes: {
-        'Pad Replacement':  { dealer:[300,500], indie:[150,280], diy:[40,80],   labor:[1,1.5], diff:'moderate' },
-        'Rotor Replacement':{ dealer:[500,800], indie:[300,550], diy:[80,150],  labor:[1.5,2.5],diff:'moderate' },
-        'Caliper Replacement':{ dealer:[600,1000],indie:[350,650],diy:[100,200],labor:[2,3],   diff:'advanced' },
+        'Pad Replacement (Front)':  { indie:[50,120],   labor:[1,1.5] },
+        'Pad Replacement (Rear)':   { indie:[50,120],   labor:[1,1.5] },
+        'Rotor Replacement (Front)':{ indie:[80,180],   labor:[1.5,2.5] },
+        'Rotor Replacement (Rear)': { indie:[80,180],   labor:[1.5,2.5] },
+        'Full Brake Job (4-wheel)': { indie:[200,450],  labor:[3,5] },
+        'Caliper Replacement':      { indie:[80,200],   labor:[1.5,3] },
+        'Brake Flush':              { indie:[20,40],    labor:[0.5,1] },
+        'ABS Sensor':               { indie:[60,150],   labor:[1,2] },
       },
       Transmission: {
-        'Fluid Change': { dealer:[200,350], indie:[100,180], diy:[30,60],  labor:[0.5,1],  diff:'easy' },
-        'Filter Change':{ dealer:[250,400], indie:[130,220], diy:[40,80],  labor:[1,1.5],  diff:'moderate' },
-        'Full Rebuild': { dealer:[3000,5000],indie:[2000,3500],diy:null,   labor:[15,25],  diff:'professional' },
+        'Fluid Change':    { indie:[30,65],    labor:[0.5,1] },
+        'Filter Change':   { indie:[35,80],    labor:[1,1.5] },
+        'Full Rebuild':    { indie:[1200,2800],labor:[15,25] },
+        'Shift Solenoid':  { indie:[60,180],   labor:[2,4] },
+        'Torque Converter':{ indie:[150,400],  labor:[5,8] },
       },
       Suspension: {
-        'Strut Replacement': { dealer:[800,1400], indie:[500,900], diy:[150,300], labor:[3,4.5], diff:'advanced' },
-        'Sway Bar Links':    { dealer:[200,400],  indie:[120,250], diy:[30,60],   labor:[0.7,1.3],diff:'moderate' },
-        'Control Arm':       { dealer:[500,900],  indie:[300,600], diy:[80,180],  labor:[2,3.5], diff:'advanced' },
+        'Strut Replacement (pair)': { indie:[150,350],  labor:[2.5,4.5] },
+        'Shock Absorbers (pair)':   { indie:[100,250],  labor:[1.5,3] },
+        'Sway Bar Links':           { indie:[30,70],    labor:[0.5,1.5] },
+        'Control Arm':              { indie:[80,220],   labor:[2,3.5] },
+        'Ball Joint':               { indie:[60,150],   labor:[1.5,3] },
+        'Tie Rod End':              { indie:[50,120],   labor:[1,2] },
+        'Wheel Bearing':            { indie:[80,220],   labor:[2,3.5] },
+        'Alignment':                { indie:[0,0],      labor:[0.7,1.2] },
       },
       Electrical: {
-        'Battery Replacement':{ dealer:[200,350], indie:[120,220], diy:[80,160], labor:[0.3,0.7], diff:'easy' },
-        'Alternator':         { dealer:[500,900], indie:[300,600], diy:[100,200],labor:[2,3],     diff:'moderate' },
-        'Starter Motor':      { dealer:[400,750], indie:[250,500], diy:[80,180], labor:[1.5,2.5], diff:'moderate' },
+        'Battery Replacement':  { indie:[80,200],   labor:[0.3,0.7] },
+        'Alternator':           { indie:[120,350],  labor:[1.5,3] },
+        'Starter Motor':        { indie:[100,280],  labor:[1,2.5] },
+        'Ignition Coil':        { indie:[40,120],   labor:[0.5,1.5] },
+        'Oxygen Sensor':        { indie:[30,80],    labor:[0.5,1.5] },
+        'MAF Sensor':           { indie:[50,180],   labor:[0.5,1] },
+        'Throttle Body Clean':  { indie:[20,50],    labor:[0.5,1] },
       },
       'AC/Heating': {
-        'Recharge (Freon)':  { dealer:[200,350], indie:[120,200], diy:[40,80],   labor:[0.5,1],  diff:'easy' },
-        'Compressor Replace':{ dealer:[800,1400],indie:[500,1000],diy:[150,300], labor:[3,5],    diff:'advanced' },
-        'Heater Core':       { dealer:[900,1500],indie:[600,1100],diy:null,      labor:[5,8],    diff:'professional' },
+        'Recharge (Freon)':    { indie:[30,70],    labor:[0.5,1] },
+        'Compressor Replace':  { indie:[200,600],  labor:[3,5] },
+        'Condenser Replace':   { indie:[150,350],  labor:[2,4] },
+        'Heater Core':         { indie:[80,200],   labor:[5,9] },
+        'Blend Door Actuator': { indie:[40,120],   labor:[1,3] },
+        'Cabin Air Filter':    { indie:[15,40],    labor:[0.2,0.5] },
       },
       Exhaust: {
-        'Muffler Replace': { dealer:[300,550], indie:[180,350], diy:[60,120], labor:[1,2],   diff:'moderate' },
-        'Catalytic Converter':{ dealer:[900,2000],indie:[600,1400],diy:[200,600],labor:[2,4], diff:'advanced' },
-        'O2 Sensor':       { dealer:[250,450], indie:[150,300], diy:[30,70],  labor:[0.5,1.5],diff:'moderate' },
+        'Muffler Replace':         { indie:[60,180],   labor:[1,2] },
+        'Catalytic Converter':     { indie:[250,900],  labor:[2,4] },
+        'O2 Sensor':               { indie:[30,80],    labor:[0.5,1.5] },
+        'Flex Pipe / Resonator':   { indie:[80,200],   labor:[1.5,2.5] },
+        'Exhaust Manifold Gasket': { indie:[30,80],    labor:[2,4] },
       },
       Tires: {
-        'Single Tire':   { dealer:[150,300],  indie:[100,220], diy:null,      labor:[0.3,0.5], diff:'easy' },
-        'Full Set (4)':  { dealer:[600,1200], indie:[400,900], diy:null,      labor:[1,1.5],   diff:'easy' },
-        'Alignment':     { dealer:[100,180],  indie:[70,130],  diy:null,      labor:[0.7,1.2], diff:'easy' },
+        'Single Tire (labor only)': { indie:[0,0],    labor:[0.3,0.5] },
+        'Full Set (4) labor only':  { indie:[0,0],    labor:[1,1.5] },
+        'Alignment':                { indie:[0,0],    labor:[0.7,1.2] },
+        'TPMS Sensor':              { indie:[40,90],  labor:[0.5,1] },
       },
       'Oil/Fluids': {
-        'Oil Change':        { dealer:[80,150],  indie:[40,80],  diy:[25,45],  labor:[0.3,0.7], diff:'easy' },
-        'Coolant Flush':     { dealer:[150,250], indie:[90,160], diy:[25,50],  labor:[0.5,1],   diff:'easy' },
-        'Brake Fluid Flush': { dealer:[120,220], indie:[70,130], diy:[20,40],  labor:[0.5,1],   diff:'easy' },
+        'Oil Change (conventional)': { indie:[20,35],  labor:[0.3,0.7] },
+        'Oil Change (synthetic)':    { indie:[45,80],  labor:[0.3,0.7] },
+        'Coolant Flush':             { indie:[20,45],  labor:[0.5,1] },
+        'Brake Fluid Flush':         { indie:[15,35],  labor:[0.5,1] },
+        'Power Steering Flush':      { indie:[20,40],  labor:[0.5,1] },
+        'Differential Fluid':        { indie:[30,60],  labor:[0.5,1] },
       },
     };
 
-    // Region cost multipliers (additive %)
-    const regionMults = { hi:0.25, ca:0.20, ny:0.18, tx:-0.05, fl:0.02, mw:-0.10, se:-0.05, pnw:0.08 };
-    const regionLabels = { hi:'Hawaii +25%', ca:'California +20%', ny:'New York +18%', tx:'Texas -5%',
-                           fl:'Florida +2%', mw:'Midwest -10%', se:'Southeast -5%', pnw:'Pacific NW +8%' };
+    // ═══════════════════════════════════════
+    //  SETTINGS
+    // ═══════════════════════════════════════
+    let settings = {
+      shopName: '', shopPhone: '', hourlyRate: 95, apiKey: ''
+    };
 
-    // R2R coverage: repairs that directly benefit from R2R data access
-    const r2rRepairs = ['Timing Belt','Head Gasket','Alternator','Starter Motor','Caliper Replacement',
-                        'Catalytic Converter','Heater Core','Full Rebuild'];
-
-    // ── Year selector ──
-    const yr = document.getElementById('selYear');
-    for (let y = 2024; y >= 2010; y--) {
-      const o = document.createElement('option'); o.value = y; o.textContent = y; yr.appendChild(o);
+    function loadSettings() {
+      try {
+        const s = JSON.parse(localStorage.getItem('repairiq_settings') || '{}');
+        settings = { ...settings, ...s };
+        document.getElementById('sShopName').value  = settings.shopName || '';
+        document.getElementById('sShopPhone').value = settings.shopPhone || '';
+        document.getElementById('sHourlyRate').value= settings.hourlyRate || 95;
+        document.getElementById('sApiKey').value    = settings.apiKey || '';
+        updateHeaderShopName();
+        // Show setup notice if rate not configured yet
+        if (!settings.shopName || !settings.hourlyRate) {
+          document.getElementById('setupNotice').style.display = 'block';
+        }
+        // Feed API key to avatar widget if present
+        if (settings.apiKey) {
+          localStorage.setItem('repairiq_apikey', settings.apiKey);
+          localStorage.setItem('glowai_apikey', settings.apiKey); // avatar-widget may use this
+        }
+      } catch(e) {}
     }
 
-    // ── Make → Model ──
+    function saveSettings() {
+      settings.shopName   = esc(document.getElementById('sShopName').value.trim());
+      settings.shopPhone  = esc(document.getElementById('sShopPhone').value.trim());
+      settings.hourlyRate = Math.max(50, Math.min(300, parseFloat(document.getElementById('sHourlyRate').value) || 95));
+      settings.apiKey     = document.getElementById('sApiKey').value.trim();
+      localStorage.setItem('repairiq_settings', JSON.stringify(settings));
+      if (settings.apiKey) {
+        localStorage.setItem('repairiq_apikey', settings.apiKey);
+      }
+      updateHeaderShopName();
+      document.getElementById('setupNotice').style.display = 'none';
+      const badge = document.getElementById('saveBadge');
+      badge.classList.add('visible');
+      setTimeout(() => badge.classList.remove('visible'), 2200);
+    }
+
+    function updateHeaderShopName() {
+      const el = document.getElementById('headerShopName');
+      el.textContent = settings.shopName || 'Shop Edition';
+    }
+
+    // ═══════════════════════════════════════
+    //  YEAR + MAKE → MODEL
+    // ═══════════════════════════════════════
+    const yrSel = document.getElementById('selYear');
+    for (let y = 2025; y >= 2005; y--) {
+      const o = document.createElement('option'); o.value = y; o.textContent = y; yrSel.appendChild(o);
+    }
+
     document.getElementById('selMake').addEventListener('change', function() {
       const sel = document.getElementById('selModel');
       sel.innerHTML = '<option value="">— Select Model —</option>';
@@ -554,7 +675,6 @@
       });
     });
 
-    // ── Category → Repair ──
     document.getElementById('selCategory').addEventListener('change', function() {
       const sel = document.getElementById('selRepair');
       sel.innerHTML = '<option value="">— Select Repair —</option>';
@@ -563,229 +683,368 @@
       });
     });
 
-    // ── Estimate ──
-    let lastEstimate = null;
-    document.getElementById('estimateBtn').addEventListener('click', () => {
-      const make     = document.getElementById('selMake').value;
-      const model    = document.getElementById('selModel').value;
-      const year     = document.getElementById('selYear').value;
-      const region   = document.getElementById('selRegion').value;
-      const category = document.getElementById('selCategory').value;
-      const repair   = document.getElementById('selRepair').value;
+    // ═══════════════════════════════════════
+    //  CURRENT ESTIMATE STATE
+    // ═══════════════════════════════════════
+    let currentEstimate = null; // { clientName, year, make, model, repairName, laborHrsMin, laborHrsMax, partsMin, partsMax, laborMin, laborMax, totalMin, totalMax, notes }
 
-      if (!category || !repair) { alert('Please select a repair category and specific repair.'); return; }
+    // ═══════════════════════════════════════
+    //  AI ESTIMATE
+    // ═══════════════════════════════════════
+    async function runAiEstimate() {
+      const desc = document.getElementById('jobDesc').value.trim();
+      const year = document.getElementById('selYear').value;
+      const make = document.getElementById('selMake').value;
+      const model = document.getElementById('selModel').value;
 
-      const data = repairs[category][repair];
-      if (!data) return;
+      if (!desc) { showEstimateError('Describe the job first — what does the customer need?'); return; }
 
-      const mult = 1 + (regionMults[region] || 0);
-      const fmt = (n) => '$' + Math.round(n * mult).toLocaleString();
-      const range = (arr) => `${fmt(arr[0])} – ${fmt(arr[1])}`;
-
-      document.getElementById('resultTitle').textContent =
-        `${repair}${make ? ' — ' + make + (model ? ' ' + model : '') : ''}`;
-
-      const diffMap = { easy:'Easy', moderate:'Moderate', advanced:'Advanced', professional:'Professional Only' };
-      const diffEl = document.getElementById('diffBadge');
-      diffEl.textContent = diffMap[data.diff] || data.diff;
-      diffEl.className = `diff-badge diff-${data.diff}`;
-
-      document.getElementById('costDealer').textContent = range(data.dealer);
-      document.getElementById('costIndie').textContent  = range(data.indie);
-      document.getElementById('costDIY').textContent    = data.diy ? range(data.diy) : 'Not recommended';
-      document.getElementById('laborHours').textContent =
-        `${data.labor[0]}–${data.labor[1]}`;
-      document.getElementById('regionMult').textContent =
-        region ? regionLabels[region] : 'No region selected';
-
-      const r2rEl = document.getElementById('r2rBadge');
-      if (r2rRepairs.includes(repair)) {
-        r2rEl.innerHTML = `<span class="r2r-badge r2r-ok">✓ R2R Supported — independent shops can access parts &amp; diagnostics</span>`;
-      } else {
-        r2rEl.innerHTML = `<span class="r2r-badge r2r-check">⚠ Check State Law — R2R coverage varies for this repair type</span>`;
+      const apiKey = settings.apiKey || localStorage.getItem('repairiq_apikey') || '';
+      if (!apiKey) {
+        showEstimateError('Add your Claude API key in Settings to use AI estimates. Or use the lookup estimator below.');
+        return;
       }
 
-      lastEstimate = { make, model, year, repair, dealer: range(data.dealer), indie: range(data.indie), diy: data.diy ? range(data.diy) : 'N/A', saved: new Date().toLocaleDateString() };
+      clearEstimateError();
+      const btn = document.getElementById('aiEstimateBtn');
+      btn.disabled = true;
+      btn.textContent = '✦ Generating…';
+
+      const vehicleStr = [year, make, model].filter(Boolean).join(' ') || 'vehicle unspecified';
+      const rate = settings.hourlyRate || 95;
+
+      const systemPrompt = `You are RepairIQ, an AI assistant for auto repair shop owners. Analyze job descriptions and return structured repair estimates. Use professional mechanic terminology. Return ONLY valid JSON — no prose outside the JSON.`;
+
+      const prompt = `Auto repair shop, labor rate: $${rate}/hr.
+Vehicle: ${vehicleStr}.
+Job description: "${desc}"
+
+Return ONLY this JSON:
+{
+  "repair_name": "<concise job title, e.g. Front Brake Pads + Rotors>",
+  "labor_hours_min": <number>,
+  "labor_hours_max": <number>,
+  "parts_cost_min": <number — shop cost, whole number>,
+  "parts_cost_max": <number — shop cost, whole number>,
+  "notes": "<1-2 sentence professional note about the job, any flags or upsell opportunities>"
+}
+
+Base labor hours on industry standard (Mitchell/AllData). Parts cost = what the shop pays (not retail). Return ONLY the JSON.`;
+
+      try {
+        const data = await ClaudeAPI.call(apiKey, {
+          model: 'claude-sonnet-4-6',
+          max_tokens: 600,
+          system: systemPrompt,
+          messages: [{ role: 'user', content: prompt }],
+        });
+        const raw = data.content?.filter(b => b.type === 'text').map(b => b.text).join('').trim() || '{}';
+        const match = raw.match(/\{[\s\S]*\}/);
+        if (!match) throw new Error('Invalid AI response');
+        const result = JSON.parse(match[0]);
+
+        const laborMin = Math.round(result.labor_hours_min * rate);
+        const laborMax = Math.round(result.labor_hours_max * rate);
+
+        currentEstimate = {
+          clientName: document.getElementById('clientName').value.trim() || 'Walk-in',
+          year, make, model,
+          repairName:   result.repair_name || desc.slice(0,60),
+          laborHrsMin:  result.labor_hours_min,
+          laborHrsMax:  result.labor_hours_max,
+          partsMin:     result.parts_cost_min,
+          partsMax:     result.parts_cost_max,
+          laborMin,
+          laborMax,
+          totalMin:     laborMin + result.parts_cost_min,
+          totalMax:     laborMax + result.parts_cost_max,
+          notes:        result.notes || '',
+          source:       'ai',
+          date:         new Date().toLocaleDateString(),
+        };
+
+        document.getElementById('aiSummaryWrap').innerHTML = result.notes ? `
+          <div class="ai-summary">
+            <div class="ai-indicator">✦ AI Note</div>
+            ${esc(result.notes)}
+          </div>` : '';
+
+        renderEstimateResults();
+      } catch(e) {
+        const s = e.status;
+        if (s === 401) showEstimateError('Invalid API key — check Settings.');
+        else if (s === 429) showEstimateError('Too many requests — wait a moment and try again.');
+        else showEstimateError('AI estimate failed: ' + (e.message || 'Check your API key and connection.'));
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '✦ Generate AI Estimate →';
+      }
+    }
+
+    // ═══════════════════════════════════════
+    //  LOOKUP ESTIMATE
+    // ═══════════════════════════════════════
+    function runLookupEstimate() {
+      const category = document.getElementById('selCategory').value;
+      const repair   = document.getElementById('selRepair').value;
+      if (!category || !repair) { showEstimateError('Select a repair category and specific repair.'); return; }
+
+      clearEstimateError();
+      const data = repairs[category]?.[repair];
+      if (!data) { showEstimateError('Repair not found in database.'); return; }
+
+      const year  = document.getElementById('selYear').value;
+      const make  = document.getElementById('selMake').value;
+      const model = document.getElementById('selModel').value;
+      const rate  = settings.hourlyRate || 95;
+
+      const laborMin = Math.round(data.labor[0] * rate);
+      const laborMax = Math.round(data.labor[1] * rate);
+
+      document.getElementById('aiSummaryWrap').innerHTML = '';
+      currentEstimate = {
+        clientName: document.getElementById('clientName').value.trim() || 'Walk-in',
+        year, make, model,
+        repairName:  repair,
+        laborHrsMin: data.labor[0],
+        laborHrsMax: data.labor[1],
+        partsMin:    data.indie[0],
+        partsMax:    data.indie[1],
+        laborMin,
+        laborMax,
+        totalMin:    laborMin + data.indie[0],
+        totalMax:    laborMax + data.indie[1],
+        notes:       '',
+        source:      'lookup',
+        date:        new Date().toLocaleDateString(),
+      };
+      renderEstimateResults();
+    }
+
+    function renderEstimateResults() {
+      const e = currentEstimate;
+      const fmt = n => '$' + n.toLocaleString();
+      const vehicleStr = [e.year, e.make, e.model].filter(Boolean).join(' ');
+
+      document.getElementById('resultTitle').textContent =
+        e.repairName + (vehicleStr ? ' — ' + vehicleStr : '');
+
+      document.getElementById('costLabor').textContent =
+        e.laborMin === e.laborMax ? fmt(e.laborMin) : `${fmt(e.laborMin)}–${fmt(e.laborMax)}`;
+      document.getElementById('costParts').textContent =
+        e.partsMin === 0 && e.partsMax === 0 ? 'N/A' : `${fmt(e.partsMin)}–${fmt(e.partsMax)}`;
+      document.getElementById('costTotal').textContent =
+        `${fmt(e.totalMin)}–${fmt(e.totalMax)}`;
+
+      document.getElementById('laborNote').innerHTML =
+        `⏱ Labor: <span>${e.laborHrsMin}–${e.laborHrsMax} hrs</span>&nbsp;·&nbsp;Shop rate: <span>$${settings.hourlyRate || 95}/hr</span>`;
 
       document.getElementById('resultsPanel').classList.add('visible');
       document.getElementById('resultsPanel').scrollIntoView({ behavior:'smooth', block:'nearest' });
-    });
-
-    // ── Save estimate ──
-    document.getElementById('saveEstBtn').addEventListener('click', () => {
-      if (!lastEstimate) return;
-      const saved = JSON.parse(localStorage.getItem('repairiq_saved') || '[]');
-      saved.unshift(lastEstimate);
-      localStorage.setItem('repairiq_saved', JSON.stringify(saved.slice(0, 20)));
-      renderSaved();
-      alert('Estimate saved!');
-    });
-
-    // ── Saved list ──
-    function renderSaved() {
-      const saved = JSON.parse(localStorage.getItem('repairiq_saved') || '[]');
-      const list = document.getElementById('savedList');
-      if (!saved.length) {
-        list.innerHTML = '<p class="empty-msg">No saved estimates yet. Run a calculation and hit Save.</p>';
-        return;
-      }
-      list.innerHTML = saved.map((e, i) => `
-        <div class="saved-card">
-          <button class="del-saved" data-idx="${i}" title="Delete">✕</button>
-          <h4>${esc(e.repair)}${e.make ? ' — ' + esc(e.make) + (e.model ? ' ' + esc(e.model) : '') : ''}</h4>
-          <p>Dealer: ${esc(e.dealer)} &nbsp;·&nbsp; Indie: ${esc(e.indie)} &nbsp;·&nbsp; DIY: ${esc(e.diy)}</p>
-          <p style="margin-top:0.3rem;">${esc(e.year || '')} &nbsp;·&nbsp; Saved ${esc(e.saved)}</p>
-        </div>
-      `).join('');
     }
 
-    document.getElementById('savedList').addEventListener('click', e => {
-      const btn = e.target.closest('.del-saved');
-      if (!btn) return;
-      const saved = JSON.parse(localStorage.getItem('repairiq_saved') || '[]');
-      saved.splice(parseInt(btn.dataset.idx), 1);
-      localStorage.setItem('repairiq_saved', JSON.stringify(saved));
-      renderSaved();
-    });
-
-    // ── Mechanic finder ──
-    // #ASSUMPTION: Overpass API is available and returns OSM amenity nodes
-    const OVERPASS = 'https://overpass-api.de/api/interpreter';
-    function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-    let mechAbort = null;
-
-    function haversineKm(lat1, lon1, lat2, lon2) {
-      const R = 6371, dLat = (lat2-lat1)*Math.PI/180, dLon = (lon2-lon1)*Math.PI/180;
-      const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
-      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    function showEstimateError(msg) {
+      const el = document.getElementById('estimateError');
+      el.textContent = msg; el.classList.add('visible');
+    }
+    function clearEstimateError() {
+      document.getElementById('estimateError').classList.remove('visible');
     }
 
-    function shopTypeLabel(tags) {
-      if (tags.shop === 'tyres') return 'Tyre Shop';
-      if (tags.shop === 'car_parts') return 'Parts Store';
-      if (tags.amenity === 'car_wash') return 'Car Wash';
-      return 'Auto Repair';
+    // ═══════════════════════════════════════
+    //  QUOTE GENERATION
+    // ═══════════════════════════════════════
+    function viewQuote() {
+      if (!currentEstimate) return;
+      renderQuote(currentEstimate);
+      openTab('quote');
     }
 
-    async function findMechanics(lat, lon, radius, typeFilter) {
-      // #ASSUMPTION: Overpass QL nwr covers nodes/ways/relations for shop and amenity
-      const filters = typeFilter === 'all'
-        ? `["shop"~"car_repair|tyres|car_parts"]["name"]`
-        : `["shop"="${typeFilter}"]["name"]`;
-      const query = `[out:json][timeout:20];nwr${filters}(around:${radius},${lat},${lon});out center 40;`;
-      if (mechAbort) mechAbort.abort();
-      mechAbort = new AbortController();
-      const resp = await fetch(OVERPASS, {
-        method: 'POST',
-        signal: mechAbort.signal,
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: 'data=' + encodeURIComponent(query)
-      });
-      if (!resp.ok) throw new Error('Overpass request failed');
-      const data = await resp.json();
-      return (data.elements || []).map(el => {
-        const elLat = el.lat ?? el.center?.lat;
-        const elLon = el.lon ?? el.center?.lon;
-        const dist = (elLat && elLon) ? haversineKm(lat, lon, elLat, elLon) : null;
-        return { ...el.tags, _lat: elLat, _lon: elLon, _dist: dist };
-      }).sort((a, b) => (a._dist ?? 99) - (b._dist ?? 99));
-    }
+    function renderQuote(e) {
+      const fmt = n => '$' + n.toLocaleString();
+      const shopName  = settings.shopName  || 'Your Shop';
+      const shopPhone = settings.shopPhone || '';
+      const vehicleStr = [e.year, e.make, e.model].filter(Boolean).join(' ') || 'Not specified';
 
-    function renderMechCards(shops, userLat, userLon) {
-      const grid = document.getElementById('mechGrid');
-      if (!shops.length) {
-        grid.innerHTML = '<p class="mech-empty">No shops found in this area. Try a larger radius.</p>';
-        return;
-      }
-      grid.innerHTML = shops.map(s => {
-        const dist = s._dist != null ? (s._dist < 1 ? (s._dist*1000).toFixed(0)+'m' : s._dist.toFixed(1)+'km') : '';
-        const addr = [s['addr:housenumber'], s['addr:street'], s['addr:city']].filter(Boolean).join(' ');
-        const phone = s.phone || s['contact:phone'] || '';
-        // validate coords before building URL — prevents open redirect from malicious OSM data
-        const validCoords = s._lat && s._lon && !isNaN(s._lat) && !isNaN(s._lon) && s._lat >= -90 && s._lat <= 90 && s._lon >= -180 && s._lon <= 180;
-        const mapsUrl = validCoords
-          ? `https://maps.google.com/?q=${encodeURIComponent(s._lat)},${encodeURIComponent(s._lon)}`
-          : `https://maps.google.com/?q=${encodeURIComponent(s.name||'auto repair')}`;
-        // phone must start with + or digits only — prevents tel: injection
-        const safePhone = /^[+\d\s\-().]+$/.test(phone) ? phone : '';
-        return `
-        <div class="mech-card">
-          <div class="mech-name">${esc(s.name || 'Auto Repair Shop')}</div>
-          <div class="mech-meta">
-            <span class="mech-type-badge">${esc(shopTypeLabel(s))}</span>
-            ${dist ? `<span class="mech-dist">${esc(dist)} away</span>` : ''}
+      document.getElementById('quoteContent').innerHTML = `
+        <div class="quote-card">
+          <div class="quote-header">
+            <div class="quote-shop-name">${esc(shopName)}</div>
+            <div class="quote-shop-sub">${shopPhone ? esc(shopPhone) + ' &nbsp;·&nbsp; ' : ''}Repair Estimate &nbsp;·&nbsp; ${esc(e.date)}</div>
           </div>
-          ${s.opening_hours ? `<div class="mech-hours">🕐 ${esc(s.opening_hours)}</div>` : ''}
-          ${addr ? `<div class="mech-addr">📍 ${esc(addr)}</div>` : ''}
-          ${safePhone ? `<div class="mech-phone">📞 ${esc(safePhone)}</div>` : ''}
-          <div class="mech-actions">
-            <a href="${esc(mapsUrl)}" class="btn-dir" target="_blank" rel="noopener">Directions</a>
-            ${safePhone ? `<a href="tel:${esc(safePhone)}" class="btn-call">Call</a>` : ''}
+          <div class="quote-meta">
+            <div class="quote-meta-row">
+              <span class="quote-meta-label">Client</span>
+              <span class="quote-meta-val">${esc(e.clientName)}</span>
+            </div>
+            <div class="quote-meta-row">
+              <span class="quote-meta-label">Vehicle</span>
+              <span class="quote-meta-val">${esc(vehicleStr)}</span>
+            </div>
+          </div>
+          <div class="quote-lines">
+            <div class="quote-line">
+              <span class="quote-line-name">Labor — ${esc(e.repairName)}</span>
+              <span class="quote-line-range">${fmt(e.laborMin)}–${fmt(e.laborMax)}</span>
+            </div>
+            ${e.partsMin > 0 || e.partsMax > 0 ? `
+            <div class="quote-line">
+              <span class="quote-line-name">Parts &amp; Materials</span>
+              <span class="quote-line-range">${fmt(e.partsMin)}–${fmt(e.partsMax)}</span>
+            </div>` : ''}
+            <div class="quote-line">
+              <span class="quote-line-name" style="font-size:0.72rem;color:var(--muted)">Labor (${e.laborHrsMin}–${e.laborHrsMax} hrs @ $${settings.hourlyRate || 95}/hr)</span>
+              <span></span>
+            </div>
+          </div>
+          <div class="quote-total">
+            <span class="quote-total-label">Estimate Total</span>
+            <span class="quote-total-value">${fmt(e.totalMin)} – ${fmt(e.totalMax)}</span>
+          </div>
+          <div class="quote-note">
+            ${e.notes ? esc(e.notes) + '<br><br>' : ''}
+            This is a pre-inspection estimate. Final pricing may vary based on actual parts required and any additional work discovered during service. Estimate valid 30 days.
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn-primary" onclick="shareQuote()">Share Quote</button>
+          <button class="btn-ghost" onclick="copyQuote()">Copy Text</button>
+          <button class="btn-secondary" onclick="saveJob()">Save Job</button>
+        </div>
+      `;
+    }
+
+    function shareQuote() {
+      if (!currentEstimate) return;
+      const e = currentEstimate;
+      const fmt = n => '$' + n.toLocaleString();
+      const shopName = settings.shopName || 'RepairIQ Shop';
+      const vehicle  = [e.year, e.make, e.model].filter(Boolean).join(' ') || 'Your vehicle';
+      const text = `REPAIR ESTIMATE — ${shopName}\n\nClient: ${e.clientName}\nVehicle: ${vehicle}\n\nJob: ${e.repairName}\nLabor: ${fmt(e.laborMin)}–${fmt(e.laborMax)}\n${e.partsMin > 0 ? `Parts: ${fmt(e.partsMin)}–${fmt(e.partsMax)}\n` : ''}Total Estimate: ${fmt(e.totalMin)}–${fmt(e.totalMax)}\n\nDate: ${e.date}${settings.shopPhone ? '\nPhone: ' + settings.shopPhone : ''}\n\n*Pre-inspection estimate. Final price may vary.*`;
+
+      if (navigator.share) {
+        navigator.share({ title: 'Repair Estimate — ' + shopName, text });
+      } else {
+        navigator.clipboard?.writeText(text).then(() => alert('Quote copied to clipboard!'));
+      }
+    }
+
+    function copyQuote() {
+      if (!currentEstimate) return;
+      const e = currentEstimate;
+      const fmt = n => '$' + n.toLocaleString();
+      const shopName = settings.shopName || 'RepairIQ Shop';
+      const vehicle  = [e.year, e.make, e.model].filter(Boolean).join(' ') || 'Your vehicle';
+      const text = `REPAIR ESTIMATE — ${shopName}\nClient: ${e.clientName} | ${vehicle}\n${e.repairName}: ${fmt(e.totalMin)}–${fmt(e.totalMax)}\n${e.date}${settings.shopPhone ? ' | ' + settings.shopPhone : ''}`;
+      navigator.clipboard?.writeText(text).then(() => alert('Quote copied!')).catch(() => alert('Copy failed — try Share instead.'));
+    }
+
+    // ═══════════════════════════════════════
+    //  JOBS LOG
+    // ═══════════════════════════════════════
+    function saveJob() {
+      if (!currentEstimate) return;
+      const jobs = JSON.parse(localStorage.getItem('repairiq_jobs') || '[]');
+      const job = {
+        id: Date.now(),
+        ...currentEstimate,
+        status: 'estimate',
+      };
+      jobs.unshift(job);
+      localStorage.setItem('repairiq_jobs', JSON.stringify(jobs.slice(0, 50)));
+      renderJobs();
+      alert('Job saved! View it in the Jobs tab.');
+    }
+
+    const statusLabels = { estimate: 'Estimate', 'in-progress': 'In Progress', done: 'Done' };
+    const statusNext   = { estimate: 'in-progress', 'in-progress': 'done', done: 'estimate' };
+    const statusClass  = { estimate: 's-estimate', 'in-progress': 's-in-progress', done: 's-done' };
+
+    function renderJobs() {
+      const jobs = JSON.parse(localStorage.getItem('repairiq_jobs') || '[]');
+      const list = document.getElementById('jobsList');
+      if (!jobs.length) {
+        list.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🔧</div>No jobs yet. Run an estimate and tap Save Job.</div>';
+        return;
+      }
+      const fmt = n => '$' + n.toLocaleString();
+      list.innerHTML = jobs.map((j, i) => {
+        const vehicle = [j.year, j.make, j.model].filter(Boolean).join(' ') || 'Vehicle unknown';
+        return `
+        <div class="job-card">
+          <div class="job-card-top">
+            <div>
+              <div class="job-client">${esc(j.clientName)}</div>
+              <div class="job-vehicle">${esc(vehicle)}</div>
+              <div class="job-repair">${esc(j.repairName)}</div>
+            </div>
+            <div>
+              <div class="job-total">${fmt(j.totalMin)}–${fmt(j.totalMax)}</div>
+            </div>
+          </div>
+          <div class="job-footer">
+            <span class="job-date">${esc(j.date)}</span>
+            <button class="status-btn ${statusClass[j.status]}" onclick="cycleStatus(${i})">${statusLabels[j.status]}</button>
+            <button class="job-view-btn" onclick="loadJob(${i})">View Quote</button>
+            <button class="del-job" onclick="deleteJob(${i})" title="Delete">✕</button>
           </div>
         </div>`;
       }).join('');
     }
 
-    document.getElementById('mechLocateBtn').addEventListener('click', async () => {
-      const btn = document.getElementById('mechLocateBtn');
-      const status = document.getElementById('mechStatus');
-      const radius = parseInt(document.getElementById('mechRadius').value, 10);
-      const typeFilter = document.getElementById('mechType').value;
-      btn.disabled = true;
-      status.className = 'mech-status loading';
-      status.innerHTML = '<span class="spinner"></span>Getting location…';
-      document.getElementById('mechGrid').innerHTML = '';
+    function cycleStatus(idx) {
+      const jobs = JSON.parse(localStorage.getItem('repairiq_jobs') || '[]');
+      if (!jobs[idx]) return;
+      jobs[idx].status = statusNext[jobs[idx].status] || 'estimate';
+      localStorage.setItem('repairiq_jobs', JSON.stringify(jobs));
+      renderJobs();
+    }
 
-      try {
-        let lat, lon;
-        // #ASSUMPTION: Capacitor Geolocation available when running native
-        if (window.Capacitor?.Plugins?.Geolocation) {
-          const pos = await window.Capacitor.Plugins.Geolocation.getCurrentPosition({ enableHighAccuracy: true });
-          lat = pos.coords.latitude; lon = pos.coords.longitude;
-        } else {
-          const pos = await new Promise((res, rej) =>
-            navigator.geolocation.getCurrentPosition(res, rej, { enableHighAccuracy: true, timeout: 10000 })
-          );
-          lat = pos.coords.latitude; lon = pos.coords.longitude;
-        }
+    function deleteJob(idx) {
+      const jobs = JSON.parse(localStorage.getItem('repairiq_jobs') || '[]');
+      jobs.splice(idx, 1);
+      localStorage.setItem('repairiq_jobs', JSON.stringify(jobs));
+      renderJobs();
+    }
 
-        status.innerHTML = '<span class="spinner"></span>Searching Overpass API…';
-        const shops = await findMechanics(lat, lon, radius, typeFilter);
-        status.className = 'mech-status';
-        status.textContent = shops.length
-          ? `Found ${shops.length} shop${shops.length !== 1 ? 's' : ''} within ${radius/1000}km.`
-          : 'No shops found. Try expanding the radius.';
-        renderMechCards(shops, lat, lon);
-      } catch (err) {
-        status.className = 'mech-status error';
-        status.textContent = err.code === 1
-          ? 'Location permission denied. Enable it in settings and try again.'
-          : `Error: ${err.message || 'Could not retrieve location'}`;
-      } finally {
-        btn.disabled = false;
-      }
-    });
+    function loadJob(idx) {
+      const jobs = JSON.parse(localStorage.getItem('repairiq_jobs') || '[]');
+      if (!jobs[idx]) return;
+      currentEstimate = jobs[idx];
+      renderQuote(currentEstimate);
+      openTab('quote');
+    }
 
-    // Re-search when radius/type changes if location was already fetched
-    ['mechRadius', 'mechType'].forEach(id => {
-      document.getElementById(id).addEventListener('change', () => {
-        const btn = document.getElementById('mechLocateBtn');
-        if (!btn.disabled) btn.click();
+    // ═══════════════════════════════════════
+    //  TABS
+    // ═══════════════════════════════════════
+    function openTab(name) {
+      document.querySelectorAll('.tab-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.tab === name);
       });
-    });
+      document.querySelectorAll('.tab-panel').forEach(p => {
+        p.classList.toggle('active', p.id === 'tab-' + name);
+      });
+      if (name === 'jobs') renderJobs();
+    }
 
-    // ── Tabs ──
     document.querySelectorAll('.tab-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-        document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-        btn.classList.add('active');
-        document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
-        if (btn.dataset.tab === 'saved') renderSaved();
-      });
+      btn.addEventListener('click', () => openTab(btn.dataset.tab));
     });
 
-    // ── PWA ──
+    // ═══════════════════════════════════════
+    //  XSS HELPER
+    // ═══════════════════════════════════════
+    function esc(s) {
+      return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    // ═══════════════════════════════════════
+    //  BOOT
+    // ═══════════════════════════════════════
+    loadSettings();
+    renderJobs();
+
     if ('serviceWorker' in navigator && !window.Capacitor) {
       window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js'));
     }
