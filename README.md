@@ -1,10 +1,35 @@
-# RepairIQ — Know What You Should Pay
+# RepairIQ
+
+[![Release](https://img.shields.io/github/v/release/808cadger/repairiq?include_prereleases&label=release)](https://github.com/808cadger/repairiq/releases)
+[![Last commit](https://img.shields.io/github/last-commit/808cadger/repairiq)](https://github.com/808cadger/repairiq/commits)
+[![License](https://img.shields.io/github/license/808cadger/repairiq)](https://github.com/808cadger/repairiq/blob/HEAD/LICENSE)
+![Platforms](https://img.shields.io/badge/platform-Web%2FPWA%2C%20Android-2563eb)
+
+Repair cost calculator for fair-price ranges, right-to-repair context, and shop discovery.
+
+## Project Snapshot
+
+| Area | Details |
+|------|---------|
+| Primary use case | Repair cost calculator for fair-price ranges, right-to-repair context, and shop discovery. |
+| Platforms | Web/PWA, Android |
+| Core stack | JavaScript, Capacitor, PWA, OpenStreetMap |
+| Review first | `index.html`, `android`, `capacitor.config.json`, `package.json` |
 
 ## Download Links
 
-- **iOS / iPhone:** Open the PWA in Safari: [RepairIQ iOS install](https://808cadger.github.io/repairiq/) and choose **Share -> Add to Home Screen**.
-- **Android:** Download the latest APK from GitHub Releases: [RepairIQ Android releases](https://github.com/808cadger/repairiq/releases/latest).
-- **Source download:** [Download the GitHub source ZIP](https://github.com/808cadger/repairiq/archive/refs/heads/main.zip).
+| Platform | Link |
+|----------|------|
+| iOS / iPhone | [Open the PWA in Safari](https://808cadger.github.io/repairiq/) and choose **Share -> Add to Home Screen** |
+| Android | [Download the latest APK from GitHub Releases](https://github.com/808cadger/repairiq/releases/latest) |
+| Source | [Download the GitHub source ZIP](https://github.com/808cadger/repairiq/archive/refs/heads/main.zip) |
+| Repository | [View on GitHub](https://github.com/808cadger/repairiq) |
+
+## Why This Repo Is Worth Reviewing
+
+- Turns repair uncertainty into concrete price guidance.
+- Uses public map/data integrations without account friction.
+- PWA plus Android packaging supports quick field use.
 
 
 <!-- INSTALL-START -->
